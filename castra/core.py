@@ -75,10 +75,10 @@ def select_partitions(partition_list, key):
 
     >>> pl = [(0, 'a'), (10, 'b'), (20, 'c'), (30, 'd'), (40, 'e')]
     >>> select_partitions(pl, slice(3, 25))
-    (1, 3)
+    (1, 4)
     """
     assert key.step is None
     start, stop = key.start, key.stop
     i = bisect(partition_list, (start, None)) if start is not None else None
-    j = bisect(partition_list, (stop, None)) if stop is not None else None
+    j = bisect(partition_list, (stop, None)) +1 if stop is not None else None
     return i, j
