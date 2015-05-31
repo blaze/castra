@@ -16,7 +16,9 @@ B = pd.DataFrame({'x': [10, 20],
 
 
 def test_Castra():
-    c = Castra(A.columns, A.dtypes, A.index.dtype)
+    c = Castra(columns=A.columns,
+               dtypes=A.dtypes,
+               index_dtype=A.index.dtype)
     c.extend(A)
     c.extend(B)
 
@@ -31,13 +33,13 @@ def test_Castra():
 
 
 def test_del():
-    c = Castra(A.columns, A.dtypes, A.index.dtype)
+    c = Castra(columns=A.columns, dtypes=A.dtypes, index_dtype=A.index.dtype)
     assert os.path.exists(c.path)
     c.__del__()
     assert not os.path.exists(c.path)
 
 
 def test_context_manager():
-    with Castra(A.columns, A.dtypes, A.index.dtype) as c:
+    with Castra(columns=A.columns, dtypes=A.dtypes, index_dtype=A.index.dtype) as c:
         assert os.path.exists(c.path)
     assert not os.path.exists(c.path)

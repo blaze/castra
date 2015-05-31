@@ -12,7 +12,7 @@ def escape(text):
 
 
 class Castra(object):
-    def __init__(self, columns, dtypes, index_dtype, path=None):
+    def __init__(self, path=None, columns=None, dtypes=None, index_dtype=None):
         if path is None:
             path = tempfile.mkdtemp(prefix='castra-')
             self._explicitly_given_path = False
@@ -21,14 +21,17 @@ class Castra(object):
 
         self.path = path
         self.meta_path = self.dirname('meta')
-        self.columns = list(columns)
-        self.dtypes = dtypes
-        self.index_dtype = index_dtype
-
         self.partition_list = list()
-        self.flush_meta()
 
-    def load_meta(loads=pickle.loads):
+        if os.path.exists(self.meta_path) and os.path.isdir(self.meta_path):
+            self.load_meta()
+        else:
+            self.columns = list(columns)
+            self.dtypes = dtypes
+            self.index_dtype = index_dtype
+            self.flush_meta()
+
+    def load_meta(self, loads=pickle.loads):
         meta = []
         for name in ['columns', 'dtypes', 'index_dtype']:
             with open(os.path.join(self.meta_path, name), 'r') as f:
