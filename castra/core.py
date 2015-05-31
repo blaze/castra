@@ -1,4 +1,3 @@
-import pandas
 import tempfile
 import bloscpack
 import pickle
