@@ -65,9 +65,12 @@ class Castra(object):
     def __getitem__(self, key):
         assert isinstance(key, slice)
         i, j = select_partitions(self.partition_list, key)
-
-        return pd.concat([self.load_partition(name)
-                          for _, name in self.partition_list[slice(i, j)]])
+        start, stop = key.start, key.stop
+        data_frames = [self.load_partition(name)
+                       for _, name in self.partition_list[slice(i, j)]]
+        data_frames[0] = data_frames[0].loc[start:]
+        data_frames[-1] = data_frames[-1].loc[:stop]
+        return pd.concat(data_frames)
 
 
 def select_partitions(partition_list, key):
