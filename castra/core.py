@@ -13,7 +13,7 @@ def escape(text):
 class Castra(object):
     def __init__(self, columns, dtypes, index_dtype, path=None):
         if path is None:
-            path = tempfile.mkdtemp(prefix='castra')
+            path = tempfile.mkdtemp(prefix='castra-')
             self._explicitly_given_path = False
         else:
             self._explicitly_given_path = True
