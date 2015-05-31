@@ -25,7 +25,7 @@ class Castra(object):
 
         self.partition_list = list()
 
-    def ensure_static_meta(self, dumps=pickle.dumps):
+    def flush_meta(self, dumps=pickle.dumps):
         for name in ['columns', 'dtypes', 'index_dtype']:
             with open(self.dirname('meta', name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
