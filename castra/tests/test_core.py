@@ -4,12 +4,15 @@ import pandas.util.testing as tm
 
 
 A = pd.DataFrame({'x': [1, 2],
-                  'y': [1., 2.]}, columns=['x', 'y'],
-                  index=[1, 2])
+                  'y': [1., 2.]},
+                 columns=['x', 'y'],
+                 index=[1, 2])
 
 B = pd.DataFrame({'x': [10, 20],
-                  'y': [10., 20.]}, columns=['x', 'y'],
-                  index=[10, 20])
+                  'y': [10., 20.]},
+                 columns=['x', 'y'],
+                 index=[10, 20])
+
 
 def test_Castra():
     c = Castra(A.columns, A.dtypes, A.index.dtype)
