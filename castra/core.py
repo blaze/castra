@@ -81,10 +81,15 @@ class Castra(object):
         if os.path.exists(self.path):
             shutil.rmtree(self.path)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.drop()
+
     def __del__(self):
         if not self._explicitly_given_path:
             self.drop()
-
 
 
 def select_partitions(partition_list, key):

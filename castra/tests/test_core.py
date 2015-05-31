@@ -35,3 +35,9 @@ def test_del():
     assert os.path.exists(c.path)
     c.__del__()
     assert not os.path.exists(c.path)
+
+
+def test_context_manager():
+    with Castra(A.columns, A.dtypes, A.index.dtype) as c:
+        assert os.path.exists(c.path)
+    assert not os.path.exists(c.path)
