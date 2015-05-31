@@ -28,6 +28,13 @@ class Castra(object):
         self.partition_list = list()
         self.flush_meta()
 
+    def load_meta(loads=pickle.loads):
+        meta = []
+        for name in ['columns', 'dtypes', 'index_dtype']:
+            with open(os.path.join(self.meta_path, name), 'r') as f:
+                meta.append(loads(f.read()))
+        self.columns, self.dtype, self.index_dtype = meta
+
     def flush_meta(self, dumps=pickle.dumps):
         if not os.path.exists(self.meta_path):
             os.mkdir(self.meta_path)
