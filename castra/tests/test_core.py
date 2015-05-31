@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import pandas.util.testing as tm
 from castra import Castra
+import tempfile
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -43,3 +44,13 @@ def test_context_manager():
     with Castra(columns=A.columns, dtypes=A.dtypes, index_dtype=A.index.dtype) as c:
         assert os.path.exists(c.path)
     assert not os.path.exists(c.path)
+
+
+def test_load_Castra():
+    path = tempfile.mkdtemp(prefix='castra-')
+    c = Castra(path=path, columns=A.columns, dtypes=A.dtypes, index_dtype=A.index.dtype)
+    c.extend(A)
+    c.extend(B)
+
+    loaded = Castra(path=path)
+    tm.assert_frame_equal(c[:], loaded[:])
