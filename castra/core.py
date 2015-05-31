@@ -19,15 +19,19 @@ class Castra(object):
             self._explicitly_given_path = True
 
         self.path = path
+        self.meta_path = self.dirname('meta')
         self.columns = list(columns)
         self.dtypes = dtypes
         self.index_dtype = index_dtype
 
         self.partition_list = list()
+        self.flush_meta()
 
     def flush_meta(self, dumps=pickle.dumps):
+        if not os.path.exists(self.meta_path):
+            os.mkdir(self.meta_path)
         for name in ['columns', 'dtypes', 'index_dtype']:
-            with open(self.dirname('meta', name), 'w') as f:
+            with open(os.path.join(self.meta_path, name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
 
     def extend(self, df):
