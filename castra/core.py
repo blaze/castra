@@ -4,6 +4,7 @@ import pickle
 from bisect import bisect
 import os
 import pandas as pd
+import shutil
 
 
 def escape(text):
@@ -75,6 +76,10 @@ class Castra(object):
         data_frames[0] = data_frames[0].loc[start:]
         data_frames[-1] = data_frames[-1].loc[:stop]
         return pd.concat(data_frames)
+
+    def drop(self):
+        if os.path.exists(self.path):
+            shutil.rmtree(self.path)
 
 
 def select_partitions(partition_list, key):
