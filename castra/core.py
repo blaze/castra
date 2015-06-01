@@ -21,14 +21,15 @@ class Castra(object):
 
         self.path = path
         self.meta_path = self.dirname('meta')
-        self.partition_list = list()
 
         if os.path.exists(self.meta_path) and os.path.isdir(self.meta_path):
             self.load_meta()
+            self.load_partition_list()
         else:
             self.columns = list(columns)
             self.dtypes = dtypes
             self.index_dtype = index_dtype
+            self.partition_list = list()
             self.flush_meta()
 
     def load_meta(self, loads=pickle.loads):
@@ -44,6 +45,14 @@ class Castra(object):
         for name in ['columns', 'dtypes', 'index_dtype']:
             with open(os.path.join(self.meta_path, name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
+
+    def load_partition_list(self, loads=pickle.loads):
+        with open(os.path.join(self.meta_path, 'plist'), 'r') as f:
+            self.partition_list = pickle.loads(f.read())
+
+    def save_partition_list(self, dumps=pickle.dumps):
+        with open(os.path.join(self.meta_path, 'plist'), 'w') as f:
+            f.write(dumps(self.partition_list))
 
     def extend(self, df):
         # TODO: Ensure that df is consistent with existing data
@@ -95,11 +104,16 @@ class Castra(object):
         return self
 
     def __exit__(self, *args):
-        self.drop()
+        if not self._explicitly_given_path:
+            self.drop()
+        else:
+            self.save_partition_list()
 
     def __del__(self):
         if not self._explicitly_given_path:
             self.drop()
+        else:
+            self.save_partition_list()
 
 
 def select_partitions(partition_list, key):
