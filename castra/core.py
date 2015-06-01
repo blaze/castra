@@ -112,5 +112,5 @@ def select_partitions(partition_list, key):
     assert key.step is None
     start, stop = key.start, key.stop
     i = bisect(partition_list, (start, None)) if start is not None else None
-    j = bisect(partition_list, (stop, None)) +1 if stop is not None else None
+    j = bisect(partition_list, (stop, None)) + 1 if stop is not None else None
     return i, j
