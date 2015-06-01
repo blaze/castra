@@ -50,6 +50,7 @@ def test_load_Castra():
     c.extend(A)
     c.extend(B)
     c.save_partition_list()
+    del c
 
     loaded = Castra(path=path)
-    tm.assert_frame_equal(c[:], loaded[:])
+    tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
