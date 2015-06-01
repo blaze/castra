@@ -12,7 +12,7 @@ def escape(text):
 
 
 class Castra(object):
-    def __init__(self, path=None, columns=None, dtypes=None, index_dtype=None):
+    def __init__(self, path=None, template=None):
         if path is None:
             path = tempfile.mkdtemp(prefix='castra-')
             self._explicitly_given_path = False
@@ -25,12 +25,13 @@ class Castra(object):
         if os.path.exists(self.meta_path) and os.path.isdir(self.meta_path):
             self.load_meta()
             self.load_partition_list()
-        else:
-            self.columns = list(columns)
-            self.dtypes = dtypes
-            self.index_dtype = index_dtype
+        elif template is not None:
+            self.columns, self.dtypes, self.index_dtype = \
+                list(template.columns), template.dtypes, template.index.dtype
             self.partition_list = list()
             self.flush_meta()
+        else:
+            raise ValueError('failed to initialize')
 
     def load_meta(self, loads=pickle.loads):
         meta = []

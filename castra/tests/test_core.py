@@ -17,9 +17,7 @@ B = pd.DataFrame({'x': [10, 20],
 
 
 def test_Castra():
-    c = Castra(columns=A.columns,
-               dtypes=A.dtypes,
-               index_dtype=A.index.dtype)
+    c = Castra(template=A)
     c.extend(A)
     c.extend(B)
 
@@ -34,21 +32,21 @@ def test_Castra():
 
 
 def test_del():
-    c = Castra(columns=A.columns, dtypes=A.dtypes, index_dtype=A.index.dtype)
+    c = Castra(template=A)
     assert os.path.exists(c.path)
     c.__del__()
     assert not os.path.exists(c.path)
 
 
 def test_context_manager():
-    with Castra(columns=A.columns, dtypes=A.dtypes, index_dtype=A.index.dtype) as c:
+    with Castra(template=A) as c:
         assert os.path.exists(c.path)
     assert not os.path.exists(c.path)
 
 
 def test_load_Castra():
     path = tempfile.mkdtemp(prefix='castra-')
-    c = Castra(path=path, columns=A.columns, dtypes=A.dtypes, index_dtype=A.index.dtype)
+    c = Castra(path=path, template=A)
     c.extend(A)
     c.extend(B)
     c.save_partition_list()
