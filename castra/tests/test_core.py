@@ -43,6 +43,11 @@ def test_context_manager():
         assert os.path.exists(c.path)
     assert not os.path.exists(c.path)
 
+    path = tempfile.mkdtemp(prefix='castra-')
+    with Castra(path=path, template=A) as c:
+        assert os.path.exists(c.path)
+    assert os.path.exists(c.path)
+
 
 def test_load_Castra():
     path = tempfile.mkdtemp(prefix='castra-')
