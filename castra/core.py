@@ -116,6 +116,17 @@ class Castra(object):
         else:
             self.save_partition_list()
 
+    def __getstate__(self):
+        self.save_partition_list()
+        return (self.path, self._explicitly_given_path)
+
+    def __setstate__(self, state):
+        self.path = state[0]
+        self._explicitly_given_path = state[1]
+        self.meta_path = self.dirname('meta')
+        self.load_meta()
+        self.load_partition_list()
+
 
 def select_partitions(partition_list, key):
     """ Select partitions from partition list given slice
