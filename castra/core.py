@@ -3,6 +3,8 @@ import bloscpack
 import pickle
 from bisect import bisect
 import os
+from os import mkdir
+from os.path import exists, isdir, join
 import pandas as pd
 import shutil
 
@@ -12,8 +14,8 @@ def escape(text):
 
 
 def _safe_mkdir(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
+    if not exists(path):
+        mkdir(path)
 
 
 class Castra(object):
@@ -27,16 +29,16 @@ class Castra(object):
             self._explicitly_given_path = True
 
         # check if the given path exists already and create it if it doesn't
-        if not os.path.exists(self.path):
-            os.mkdir(self.path)
+        if not exists(self.path):
+            mkdir(self.path)
         # raise an Exception if it isn't a directory
-        elif not os.path.isdir(self.path):
+        elif not isdir(self.path):
             raise ValueError("'path': %s must be a directory")
 
         self.meta_path = self.dirname('meta')
 
         # either we have a meta directory
-        if os.path.exists(self.meta_path) and os.path.isdir(self.meta_path):
+        if exists(self.meta_path) and isdir(self.meta_path):
             if template is not None:
                 raise ValueError(
                     "'template' must be 'None' when opening a Castra")
@@ -44,7 +46,7 @@ class Castra(object):
             self.load_partition_list()
         # or we don't, in which case we need a template
         elif template is not None:
-            os.mkdir(self.meta_path)
+            mkdir(self.meta_path)
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
             self.partition_list = list()
@@ -56,21 +58,21 @@ class Castra(object):
     def load_meta(self, loads=pickle.loads):
         meta = []
         for name in ['columns', 'dtypes', 'index_dtype']:
-            with open(os.path.join(self.meta_path, name), 'r') as f:
+            with open(join(self.meta_path, name), 'r') as f:
                 meta.append(loads(f.read()))
         self.columns, self.dtype, self.index_dtype = meta
 
     def flush_meta(self, dumps=pickle.dumps):
         for name in ['columns', 'dtypes', 'index_dtype']:
-            with open(os.path.join(self.meta_path, name), 'w') as f:
+            with open(join(self.meta_path, name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
 
     def load_partition_list(self, loads=pickle.loads):
-        with open(os.path.join(self.meta_path, 'plist'), 'r') as f:
+        with open(join(self.meta_path, 'plist'), 'r') as f:
             self.partition_list = pickle.loads(f.read())
 
     def save_partition_list(self, dumps=pickle.dumps):
-        with open(os.path.join(self.meta_path, 'plist'), 'w') as f:
+        with open(join(self.meta_path, 'plist'), 'w') as f:
             f.write(dumps(self.partition_list))
 
     def extend(self, df):
@@ -78,7 +80,7 @@ class Castra(object):
         index = df.index.values
         partition_name = '--'.join([escape(index.min()), escape(index.max())])
 
-        os.mkdir(self.dirname(partition_name))
+        mkdir(self.dirname(partition_name))
 
         # Store columns
         for col in df.columns:
