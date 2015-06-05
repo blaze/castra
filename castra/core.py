@@ -122,6 +122,9 @@ class Castra(object):
         if os.path.exists(self.path):
             shutil.rmtree(self.path)
 
+    def flush(self):
+        self.save_partition_list()
+
     def __enter__(self):
         return self
 
