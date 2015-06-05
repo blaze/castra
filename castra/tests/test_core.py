@@ -42,16 +42,33 @@ def test_create_with_non_existing_path():
     path = os.path.join(tempfile.mkdtemp(prefix='castra-'), 'db')
     c = Castra(path=path, template=A)
     # need to del c now so that it doesn't barf when we remove it's directory
-    del c
     shutil.rmtree(path)
 
 def test_create_with_existing_path():
     path = tempfile.mkdtemp(prefix='castra-')
     c = Castra(path=path, template=A)
     # need to del c now so that it doesn't barf when we remove it's directory
-    del c
     shutil.rmtree(path)
 
+def test_exception_with_non_dir():
+    path = tempfile.mkdtemp(prefix='castra-')
+    file_ = os.path.join(path, 'file')
+    with open(file_, 'w') as f:
+        f.write('file')
+    nt.assert_raises(ValueError, Castra, path=file_)
+    shutil.rmtree(path)
+
+def test_exception_with_existing_castra_and_template():
+    path = tempfile.mkdtemp(prefix='castra-')
+    with Castra(path=path, template=A) as c:
+        c.extend(A)
+    nt.assert_raises(ValueError, Castra, path=path, template=A)
+    shutil.rmtree(path)
+
+def test_exception_with_empty_dir_and_no_template():
+    path = tempfile.mkdtemp(prefix='castra-')
+    nt.assert_raises(ValueError, Castra, path=path)
+    shutil.rmtree(path)
 
 def test_Castra():
     c = Castra(template=A)
