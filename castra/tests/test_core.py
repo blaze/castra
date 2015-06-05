@@ -5,6 +5,7 @@ from castra import Castra
 from castra.core import _safe_mkdir
 import tempfile
 import pickle
+import shutil
 import nose.tools as nt
 
 
