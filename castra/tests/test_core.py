@@ -3,6 +3,7 @@ import pandas as pd
 import pandas.util.testing as tm
 from castra import Castra
 import tempfile
+import pickle
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -59,3 +60,15 @@ def test_load_Castra():
 
     loaded = Castra(path=path)
     tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
+
+
+def test_pickle_Castra():
+    path = tempfile.mkdtemp(prefix='castra-')
+    c = Castra(path=path, template=A)
+    c.extend(A)
+    c.extend(B)
+
+    dumped = pickle.dumps(c)
+    undumped = pickle.loads(dumped)
+
+    tm.assert_frame_equal(pd.concat([A, B]), undumped[:])
