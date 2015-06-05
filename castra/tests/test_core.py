@@ -70,6 +70,16 @@ def test_exception_with_empty_dir_and_no_template():
     nt.assert_raises(ValueError, Castra, path=path)
     shutil.rmtree(path)
 
+def test_load():
+    path = tempfile.mkdtemp(prefix='castra-')
+    with Castra(path=path, template=A) as c:
+        c.extend(A)
+        c.extend(B)
+
+    loaded = Castra(path=path)
+    tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
+    shutil.rmtree(path)
+
 def test_Castra():
     c = Castra(template=A)
     c.extend(A)
@@ -104,15 +114,6 @@ def test_context_manager_with_specific_dir():
         assert os.path.exists(c.path)
     assert os.path.exists(c.path)
 
-
-def test_load_Castra():
-    path = tempfile.mkdtemp(prefix='castra-')
-    with Castra(path=path, template=A) as c:
-        c.extend(A)
-        c.extend(B)
-
-    loaded = Castra(path=path)
-    tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
 
 
 def test_pickle_Castra():
