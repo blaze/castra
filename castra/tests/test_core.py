@@ -88,11 +88,9 @@ def test_context_manager():
 
 def test_load_Castra():
     path = tempfile.mkdtemp(prefix='castra-')
-    c = Castra(path=path, template=A)
-    c.extend(A)
-    c.extend(B)
-    c.save_partition_list()
-    del c
+    with Castra(path=path, template=A) as c:
+        c.extend(A)
+        c.extend(B)
 
     loaded = Castra(path=path)
     tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
