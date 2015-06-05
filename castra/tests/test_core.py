@@ -90,8 +90,8 @@ class TestConstructorAndContextManager(Base):
 
     def test_context_manager_with_specific_dir(self):
         with Castra(path=self.path, template=A) as c:
-            assert os.path.exists(self.path)
-        assert os.path.exists(self.path)
+            assert os.path.exists(c.path)
+        assert os.path.exists(c.path)
 
 def test_Castra():
     c = Castra(template=A)
