@@ -35,17 +35,20 @@ def test_safe_mkdir_with_existing():
     shutil.rmtree(path)
 
 
-def test_constructor():
-    # test creating random directory
+def test_create_with_random_directory():
     c = Castra(template=A)
 
-    # test creating with given non-existing path
+def test_create_with_non_existing_path():
     path = os.path.join(tempfile.mkdtemp(prefix='castra-'), 'db')
     c = Castra(path=path, template=A)
+    del c
+    shutil.rmtree(path)
 
-    # test creating castra with given existing path
+def test_create_with_existing_path():
     path = tempfile.mkdtemp(prefix='castra-')
     c = Castra(path=path, template=A)
+    del c
+    shutil.rmtree(path)
 
 
 def test_Castra():

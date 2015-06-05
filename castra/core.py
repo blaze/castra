@@ -51,6 +51,7 @@ class Castra(object):
                 list(template.columns), template.dtypes, template.index.dtype
             self.partition_list = list()
             self.flush_meta()
+            self.save_partition_list()
         else:
             raise ValueError(
                 "must specify a 'template' when creating a new Castra")
