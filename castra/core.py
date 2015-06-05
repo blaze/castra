@@ -10,6 +10,9 @@ import shutil
 def escape(text):
     return str(text)
 
+def _safe_mkdir(path):
+    if not os.path.exists(path):
+        os.mkdir(path)
 
 class Castra(object):
     def __init__(self, path=None, template=None):

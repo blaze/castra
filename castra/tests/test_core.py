@@ -2,8 +2,10 @@ import os
 import pandas as pd
 import pandas.util.testing as tm
 from castra import Castra
+from castra.core import _safe_mkdir
 import tempfile
 import pickle
+import nose.tools as nt
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -15,6 +17,21 @@ B = pd.DataFrame({'x': [10, 20],
                   'y': [10., 20.]},
                  columns=['x', 'y'],
                  index=[10, 20])
+
+
+def test_safe_mkdir_with_new():
+    path = os.path.join(tempfile.mkdtemp(prefix='castra-'), 'db')
+    _safe_mkdir(path)
+    nt.assert_true(os.path.exists(path))
+    nt.assert_true(os.path.isdir(path))
+    shutil.rmtree(path)
+
+
+def test_safe_mkdir_with_existing():
+    path = tempfile.mkdtemp(prefix='castra-')
+    # an existing path should not raise an exception
+    _safe_mkdir(path)
+    shutil.rmtree(path)
 
 
 def test_constructor():
