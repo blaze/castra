@@ -10,31 +10,48 @@ import shutil
 def escape(text):
     return str(text)
 
+
 def _safe_mkdir(path):
     if not os.path.exists(path):
         os.mkdir(path)
 
+
 class Castra(object):
     def __init__(self, path=None, template=None):
+        # check if we should create a random path
         if path is None:
-            path = tempfile.mkdtemp(prefix='castra-')
+            self.path = tempfile.mkdtemp(prefix='castra-')
             self._explicitly_given_path = False
         else:
+            self.path = path
             self._explicitly_given_path = True
 
-        self.path = path
+        # check if the given path exists already and create it if it doesn't
+        if not os.path.exists(self.path):
+            os.mkdir(self.path)
+        # raise an Exception if it isn't a directory
+        elif not os.path.isdir(self.path):
+            raise ValueError("'path': %s must be a directory")
+
         self.meta_path = self.dirname('meta')
 
+        # either we have a meta directory
         if os.path.exists(self.meta_path) and os.path.isdir(self.meta_path):
+            if template is not None:
+                raise ValueError(
+                    "'template' must be 'None' when opening a Castra")
             self.load_meta()
             self.load_partition_list()
+        # or we don't, in which case we need a template
         elif template is not None:
+            os.mkdir(self.meta_path)
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
             self.partition_list = list()
             self.flush_meta()
         else:
-            raise ValueError('failed to initialize')
+            raise ValueError(
+                "must specify a 'template' when creating a new Castra")
 
     def load_meta(self, loads=pickle.loads):
         meta = []
@@ -44,8 +61,6 @@ class Castra(object):
         self.columns, self.dtype, self.index_dtype = meta
 
     def flush_meta(self, dumps=pickle.dumps):
-        if not os.path.exists(self.meta_path):
-            os.mkdir(self.meta_path)
         for name in ['columns', 'dtypes', 'index_dtype']:
             with open(os.path.join(self.meta_path, name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
