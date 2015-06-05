@@ -134,8 +134,6 @@ class Castra(object):
     def __del__(self):
         if not self._explicitly_given_path:
             self.drop()
-        else:
-            self.save_partition_list()
 
     def __getstate__(self):
         self.save_partition_list()
