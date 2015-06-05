@@ -17,6 +17,14 @@ B = pd.DataFrame({'x': [10, 20],
                  index=[10, 20])
 
 
+def test_constructor():
+    # test creating random directory
+    c = Castra(template=A)
+    # test creating with given path
+    path = os.path.join(tempfile.mkdtemp(prefix='castra-'), 'db')
+    c = Castra(path=path, template=A)
+
+
 def test_Castra():
     c = Castra(template=A)
     c.extend(A)
