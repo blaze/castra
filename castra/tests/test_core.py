@@ -46,14 +46,14 @@ class TestSafeMkdir(Base):
 class TestConstructorAndContextManager(Base):
 
     def test_create_with_random_directory(self):
-        c = Castra(template=A)
+        Castra(template=A)
 
     def test_create_with_non_existing_path(self):
         path = os.path.join(self.path, 'db')
-        c = Castra(path=path, template=A)
+        Castra(path=path, template=A)
 
     def test_create_with_existing_path(self):
-        c = Castra(path=self.path, template=A)
+        Castra(path=self.path, template=A)
 
     def test_exception_with_non_dir(self):
         file_ = os.path.join(self.path, 'file')
