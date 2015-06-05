@@ -85,18 +85,20 @@ def test_Castra():
     tm.assert_frame_equal(c[2:15], pd.concat([A[1:], B[:1]]))
 
 
-def test_del():
+def test_del_with_random_dir():
     c = Castra(template=A)
     assert os.path.exists(c.path)
     c.__del__()
     assert not os.path.exists(c.path)
 
 
-def test_context_manager():
+def test_context_manager_with_random_dir():
     with Castra(template=A) as c:
         assert os.path.exists(c.path)
     assert not os.path.exists(c.path)
 
+
+def test_context_manager_with_specific_dir():
     path = tempfile.mkdtemp(prefix='castra-')
     with Castra(path=path, template=A) as c:
         assert os.path.exists(c.path)
