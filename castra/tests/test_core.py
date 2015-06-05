@@ -7,6 +7,7 @@ import tempfile
 import pickle
 import shutil
 import nose.tools as nt
+import unittest
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -20,65 +21,61 @@ B = pd.DataFrame({'x': [10, 20],
                  index=[10, 20])
 
 
-def test_safe_mkdir_with_new():
-    path = os.path.join(tempfile.mkdtemp(prefix='castra-'), 'db')
-    _safe_mkdir(path)
-    nt.assert_true(os.path.exists(path))
-    nt.assert_true(os.path.isdir(path))
-    shutil.rmtree(path)
+class Base(unittest.TestCase):
+
+    def setUp(self):
+        self.path = tempfile.mkdtemp(prefix='castra-')
+
+    def tearDown(self):
+        shutil.rmtree(self.path)
 
 
-def test_safe_mkdir_with_existing():
-    path = tempfile.mkdtemp(prefix='castra-')
-    # an existing path should not raise an exception
-    _safe_mkdir(path)
-    shutil.rmtree(path)
+class TestSafeMkdir(Base):
+
+    def test_safe_mkdir_with_new(self):
+        path = os.path.join(self.path, 'db')
+        _safe_mkdir(path)
+        nt.assert_true(os.path.exists(path))
+        nt.assert_true(os.path.isdir(path))
+
+    def test_safe_mkdir_with_existing(self):
+        # an existing path should not raise an exception
+        _safe_mkdir(self.path)
 
 
-def test_create_with_random_directory():
-    c = Castra(template=A)
+class TestConstructorAndContextManager(Base):
 
-def test_create_with_non_existing_path():
-    path = os.path.join(tempfile.mkdtemp(prefix='castra-'), 'db')
-    c = Castra(path=path, template=A)
-    # need to del c now so that it doesn't barf when we remove it's directory
-    shutil.rmtree(path)
+    def test_create_with_random_directory(self):
+        c = Castra(template=A)
 
-def test_create_with_existing_path():
-    path = tempfile.mkdtemp(prefix='castra-')
-    c = Castra(path=path, template=A)
-    # need to del c now so that it doesn't barf when we remove it's directory
-    shutil.rmtree(path)
+    def test_create_with_non_existing_path(self):
+        path = os.path.join(self.path, 'db')
+        c = Castra(path=path, template=A)
 
-def test_exception_with_non_dir():
-    path = tempfile.mkdtemp(prefix='castra-')
-    file_ = os.path.join(path, 'file')
-    with open(file_, 'w') as f:
-        f.write('file')
-    nt.assert_raises(ValueError, Castra, path=file_)
-    shutil.rmtree(path)
+    def test_create_with_existing_path(self):
+        c = Castra(path=self.path, template=A)
 
-def test_exception_with_existing_castra_and_template():
-    path = tempfile.mkdtemp(prefix='castra-')
-    with Castra(path=path, template=A) as c:
-        c.extend(A)
-    nt.assert_raises(ValueError, Castra, path=path, template=A)
-    shutil.rmtree(path)
+    def test_exception_with_non_dir(self):
+        file_ = os.path.join(self.path, 'file')
+        with open(file_, 'w') as f:
+            f.write('file')
+        nt.assert_raises(ValueError, Castra, path=file_)
 
-def test_exception_with_empty_dir_and_no_template():
-    path = tempfile.mkdtemp(prefix='castra-')
-    nt.assert_raises(ValueError, Castra, path=path)
-    shutil.rmtree(path)
+    def test_exception_with_existing_castra_and_template(self):
+        with Castra(path=self.path, template=A) as c:
+            c.extend(A)
+        nt.assert_raises(ValueError, Castra, path=self.path, template=A)
 
-def test_load():
-    path = tempfile.mkdtemp(prefix='castra-')
-    with Castra(path=path, template=A) as c:
-        c.extend(A)
-        c.extend(B)
+    def test_exception_with_empty_dir_and_no_template(self):
+        nt.assert_raises(ValueError, Castra, path=self.path)
 
-    loaded = Castra(path=path)
-    tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
-    shutil.rmtree(path)
+    def test_load(self):
+        with Castra(path=self.path, template=A) as c:
+            c.extend(A)
+            c.extend(B)
+
+        loaded = Castra(path=self.path)
+        tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
 
 def test_Castra():
     c = Castra(template=A)
@@ -93,7 +90,6 @@ def test_Castra():
 
     tm.assert_frame_equal(c[2:5], A[1:])
     tm.assert_frame_equal(c[2:15], pd.concat([A[1:], B[:1]]))
-
 
 def test_del_with_random_dir():
     c = Castra(template=A)
