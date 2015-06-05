@@ -41,12 +41,14 @@ def test_create_with_random_directory():
 def test_create_with_non_existing_path():
     path = os.path.join(tempfile.mkdtemp(prefix='castra-'), 'db')
     c = Castra(path=path, template=A)
+    # need to del c now so that it doesn't barf when we remove it's directory
     del c
     shutil.rmtree(path)
 
 def test_create_with_existing_path():
     path = tempfile.mkdtemp(prefix='castra-')
     c = Castra(path=path, template=A)
+    # need to del c now so that it doesn't barf when we remove it's directory
     del c
     shutil.rmtree(path)
 
