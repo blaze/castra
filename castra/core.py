@@ -1,11 +1,14 @@
 import tempfile
 import bloscpack
+import blosc
 import pickle
 from bisect import bisect
 import os
 from os import mkdir
 from os.path import exists, isdir, join
 import pandas as pd
+import numpy as np
+from pandas import msgpack
 import shutil
 
 
@@ -87,7 +90,7 @@ class Castra(object):
         for col in df.columns:
             fn = self.dirname(partition_name, col)
             x = df[col].values
-            bloscpack.pack_ndarray_file(x, fn)
+            pack_file(x, fn)
 
         # Store index
         fn = self.dirname(partition_name, '.index')
@@ -100,9 +103,9 @@ class Castra(object):
         return os.path.join(self.path, *args)
 
     def load_partition(self, name):
-        columns = [bloscpack.unpack_ndarray_file(self.dirname(name, col))
+        columns = [unpack_file(self.dirname(name, col))
                    for col in self.columns]
-        index = bloscpack.unpack_ndarray_file(self.dirname(name, '.index'))
+        index = unpack_file(self.dirname(name, '.index'))
 
         return pd.DataFrame(dict(zip(self.columns, columns)),
                             columns=self.columns,
@@ -148,6 +151,43 @@ class Castra(object):
         self.meta_path = self.dirname('meta')
         self.load_meta()
         self.load_partition_list()
+
+
+def pack_file(x, fn):
+    """ Pack numpy array into filename
+
+    Supports binary data with bloscpack and text data with msgpack+blosc
+
+    >>> pack_file(np.array([1, 2, 3]), 'foo.blp')  # doctest: +SKIP
+
+    See also:
+        unpack_file
+    """
+    if x.dtype != 'O':
+        bloscpack.pack_ndarray_file(x, fn)
+    else:
+        bytes = blosc.compress(msgpack.packb(x.tolist()), 1)
+        with open(fn, 'wb') as f:
+            f.write(bytes)
+
+
+def unpack_file(fn):
+    """ Unpack numpy array from filename
+
+    Supports binary data with bloscpack and text data with msgpack+blosc
+
+    >>> unpack_file('foo.blp')  # doctest: +SKIP
+    array([1, 2, 3])
+
+    See also:
+        pack_file
+    """
+    try:
+        return bloscpack.unpack_ndarray_file(fn)
+    except ValueError:
+        with open(fn, 'rb') as f:
+            bytes = f.read()
+        return np.array(msgpack.unpackb(blosc.decompress(bytes)))
 
 
 def select_partitions(partition_list, key):
