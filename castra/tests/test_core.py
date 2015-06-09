@@ -94,6 +94,19 @@ class TestConstructorAndContextManager(Base):
         assert os.path.exists(c.path)
 
 
+def test_timeseries():
+    indices = [pd.DatetimeIndex(start=str(i), end=str(i+1), freq='w')
+                for i in range(2000, 2015)]
+    dfs = [pd.DataFrame({'x': list(range(len(ind)))}, ind)
+                for ind in indices]
+
+    with Castra(template=dfs[0]) as c:
+        for df in dfs:
+            c.extend(df)
+        df = c['2010-05': '2013-02']
+        assert len(df) > 100
+
+
 def test_Castra():
     c = Castra(template=A)
     c.extend(A)
@@ -128,3 +141,8 @@ def test_text():
         c.extend(df)
 
         tm.assert_frame_equal(c[:], df)
+
+
+def test_index_dtype_matches_template():
+    with Castra(template=A) as c:
+        assert c.partition_list.index.dtype == A.index.dtype
