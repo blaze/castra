@@ -145,4 +145,4 @@ def test_text():
 
 def test_index_dtype_matches_template():
     with Castra(template=A) as c:
-        assert c.partition_list.index.dtype == A.index.dtype
+        assert c.partitions.index.dtype == A.index.dtype
