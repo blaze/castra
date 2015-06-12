@@ -119,3 +119,12 @@ def test_pickle_Castra():
     undumped = pickle.loads(dumped)
 
     tm.assert_frame_equal(pd.concat([A, B]), undumped[:])
+
+
+def test_text():
+    df = pd.DataFrame({'name': ['Alice', 'Bob'],
+                       'balance': [100, 200]}, columns=['name', 'balance'])
+    with Castra(template=df) as c:
+        c.extend(df)
+
+        tm.assert_frame_equal(c[:], df)
