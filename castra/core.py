@@ -10,7 +10,6 @@ import numpy as np
 from pandas import msgpack
 import shutil
 from pandas.core.indexing import convert_to_index_sliceable
-import numpy as np
 
 
 def escape(text):
