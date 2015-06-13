@@ -151,6 +151,9 @@ def test_column_access():
 
         tm.assert_frame_equal(df, pd.concat([A[['x']], B[['x']]]))
 
+        df = c[:, 'x']
+        tm.assert_series_equal(df, pd.concat([A.x, B.x]))
+
 
 def test_index_dtype_matches_template():
     with Castra(template=A) as c:

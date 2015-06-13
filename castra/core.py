@@ -104,6 +104,9 @@ class Castra(object):
         return os.path.join(self.path, *args)
 
     def load_partition(self, name, columns):
+        if not isinstance(columns, list):
+            df = self.load_partition(name, [columns])
+            return df[df.columns[0]]
         arrays = [unpack_file(self.dirname(name, col))
                    for col in columns]
         index = unpack_file(self.dirname(name, '.index'))
