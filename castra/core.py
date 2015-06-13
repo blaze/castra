@@ -2,7 +2,6 @@ import tempfile
 import bloscpack
 import blosc
 import pickle
-from bisect import bisect
 import os
 from os import mkdir
 from os.path import exists, isdir, join
