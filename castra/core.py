@@ -52,7 +52,7 @@ class Castra(object):
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
             self.partitions = pd.Series([], dtype='O',
-                    index=template.index.__class__([]))
+                                        index=template.index.__class__([]))
             self.flush_meta()
             self.save_partitions()
         else:
