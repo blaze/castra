@@ -46,15 +46,16 @@ class Castra(object):
                 raise ValueError(
                     "'template' must be 'None' when opening a Castra")
             self.load_meta()
-            self.load_partition_list()
+            self.load_partitions()
         # or we don't, in which case we need a template
         elif template is not None:
             mkdir(self.meta_path)
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
-            self.partition_list = list()
+            self.partitions = pd.Series([], dtype='O',
+                    index=template.index.__class__([]))
             self.flush_meta()
-            self.save_partition_list()
+            self.save_partitions()
         else:
             raise ValueError(
                 "must specify a 'template' when creating a new Castra")
@@ -71,13 +72,13 @@ class Castra(object):
             with open(join(self.meta_path, name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
 
-    def load_partition_list(self, loads=pickle.loads):
+    def load_partitions(self, loads=pickle.loads):
         with open(join(self.meta_path, 'plist'), 'r') as f:
-            self.partition_list = pickle.loads(f.read())
+            self.partitions = pickle.loads(f.read())
 
-    def save_partition_list(self, dumps=pickle.dumps):
+    def save_partitions(self, dumps=pickle.dumps):
         with open(join(self.meta_path, 'plist'), 'w') as f:
-            f.write(dumps(self.partition_list))
+            f.write(dumps(self.partitions))
 
     def extend(self, df):
         # TODO: Ensure that df is consistent with existing data
@@ -97,7 +98,7 @@ class Castra(object):
         x = df.index.values
         bloscpack.pack_ndarray_file(x, fn)
 
-        self.partition_list.append((index.max(), partition_name))
+        self.partitions[index.max()] = partition_name
 
     def dirname(self, *args):
         return os.path.join(self.path, *args)
@@ -113,10 +114,11 @@ class Castra(object):
 
     def __getitem__(self, key):
         assert isinstance(key, slice)
-        i, j = select_partitions(self.partition_list, key)
         start, stop = key.start, key.stop
-        data_frames = [self.load_partition(name)
-                       for _, name in self.partition_list[slice(i, j)]]
+        names = select_partitions(self.partitions, key)
+
+        data_frames = [self.load_partition(name) for name in names]
+
         data_frames[0] = data_frames[0].loc[start:]
         data_frames[-1] = data_frames[-1].loc[:stop]
         return pd.concat(data_frames)
@@ -126,7 +128,7 @@ class Castra(object):
             shutil.rmtree(self.path)
 
     def flush(self):
-        self.save_partition_list()
+        self.save_partitions()
 
     def __enter__(self):
         return self
@@ -135,14 +137,14 @@ class Castra(object):
         if not self._explicitly_given_path:
             self.drop()
         else:
-            self.save_partition_list()
+            self.save_partitions()
 
     def __del__(self):
         if not self._explicitly_given_path:
             self.drop()
 
     def __getstate__(self):
-        self.save_partition_list()
+        self.save_partitions()
         return (self.path, self._explicitly_given_path)
 
     def __setstate__(self, state):
@@ -150,7 +152,7 @@ class Castra(object):
         self._explicitly_given_path = state[1]
         self.meta_path = self.dirname('meta')
         self.load_meta()
-        self.load_partition_list()
+        self.load_partitions()
 
 
 def pack_file(x, fn):
@@ -190,15 +192,31 @@ def unpack_file(fn):
         return np.array(msgpack.unpackb(blosc.decompress(bytes)))
 
 
-def select_partitions(partition_list, key):
+from pandas.core.indexing import convert_to_index_sliceable
+import numpy as np
+
+
+def coerce_index(dt, o):
+    if np.issubdtype(dt, np.datetime64):
+        return pd.Timestamp(o)
+    return o
+
+
+def select_partitions(partitions, key):
     """ Select partitions from partition list given slice
 
-    >>> pl = [(0, 'a'), (10, 'b'), (20, 'c'), (30, 'd'), (40, 'e')]
-    >>> select_partitions(pl, slice(3, 25))
-    (1, 4)
+    >>> p = pd.Series(['a', 'b', 'c', 'd', 'e'], index=[0, 10, 20, 30, 40])
+    >>> select_partitions(p, slice(3, 25))
+    ['b', 'c', 'd']
     """
     assert key.step is None
     start, stop = key.start, key.stop
-    i = bisect(partition_list, (start, None)) if start is not None else None
-    j = bisect(partition_list, (stop, None)) + 1 if stop is not None else None
-    return i, j
+    names = list(partitions.loc[start:stop])
+
+    last = partitions.searchsorted(names[-1])[0]
+
+    stop2 = coerce_index(partitions.index.dtype, stop)
+    if partitions.index[last] < stop2  and len(partitions) > last + 1:
+        names.append(partitions.iloc[last + 1])
+
+    return names
