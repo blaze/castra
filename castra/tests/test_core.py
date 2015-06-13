@@ -158,3 +158,24 @@ def test_column_access():
 def test_index_dtype_matches_template():
     with Castra(template=A) as c:
         assert c.partitions.index.dtype == A.index.dtype
+
+
+def test_to_dask_dataframe():
+    try:
+        import dask.dataframe as dd
+    except ImportError:
+        return
+
+    with Castra(template=A) as c:
+        c.extend(A)
+        c.extend(B)
+
+        df = c.to_dask()
+        assert isinstance(df, dd.DataFrame)
+        assert list(df.divisions) == [2]
+        tm.assert_frame_equal(df.compute(), c[:])
+
+        df = c.to_dask('x')
+        assert isinstance(df, dd.Series)
+        assert list(df.divisions) == [2]
+        tm.assert_series_equal(df.compute(), c[:, 'x'])

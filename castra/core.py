@@ -1,3 +1,4 @@
+from collections import Iterator
 import os
 from os import mkdir
 from os.path import exists, isdir, join
@@ -104,6 +105,8 @@ class Castra(object):
         return os.path.join(self.path, *args)
 
     def load_partition(self, name, columns):
+        if isinstance(columns, Iterator):
+            columns = list(columns)
         if not isinstance(columns, list):
             df = self.load_partition(name, [columns])
             return df[df.columns[0]]
@@ -159,6 +162,19 @@ class Castra(object):
         self.meta_path = self.dirname('meta')
         self.load_meta()
         self.load_partitions()
+
+    def to_dask(self, columns=None):
+        if columns is None:
+            columns = self.columns
+        import dask.dataframe as dd
+        name = next(dd.core.names)
+        dsk = dict(((name, i), (self.load_partition, part, columns))
+                    for i, part in enumerate(self.partitions.values))
+        divisions = list(self.partitions.index[:-1])
+        if isinstance(columns, list):
+            return dd.DataFrame(dsk, name, columns, divisions)
+        else:
+            return dd.Series(dsk, name, columns, divisions)
 
 
 def pack_file(x, fn):
