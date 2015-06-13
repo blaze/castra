@@ -193,8 +193,6 @@ def unpack_file(fn):
         return np.array(msgpack.unpackb(blosc.decompress(bytes)))
 
 
-
-
 def coerce_index(dt, o):
     if np.issubdtype(dt, np.datetime64):
         return pd.Timestamp(o)
@@ -215,7 +213,7 @@ def select_partitions(partitions, key):
     last = partitions.searchsorted(names[-1])[0]
 
     stop2 = coerce_index(partitions.index.dtype, stop)
-    if partitions.index[last] < stop2  and len(partitions) > last + 1:
+    if partitions.index[last] < stop2 and len(partitions) > last + 1:
         names.append(partitions.iloc[last + 1])
 
     return names
