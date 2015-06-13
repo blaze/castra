@@ -143,6 +143,15 @@ def test_text():
         tm.assert_frame_equal(c[:], df)
 
 
+def test_column_access():
+    with Castra(template=A) as c:
+        c.extend(A)
+        c.extend(B)
+        df = c[:, ['x']]
+
+        tm.assert_frame_equal(df, pd.concat([A[['x']], B[['x']]]))
+
+
 def test_index_dtype_matches_template():
     with Castra(template=A) as c:
         assert c.partitions.index.dtype == A.index.dtype
