@@ -1,14 +1,15 @@
-import tempfile
-import bloscpack
-import blosc
-import pickle
 import os
 from os import mkdir
 from os.path import exists, isdir, join
-import pandas as pd
-import numpy as np
-from pandas import msgpack
+import pickle
 import shutil
+import tempfile
+
+import blosc
+import bloscpack
+import numpy as np
+import pandas as pd
+from pandas import msgpack
 
 
 def escape(text):
