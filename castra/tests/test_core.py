@@ -210,3 +210,5 @@ def test_categorize():
 
         c.extend(B)
         assert list(c[:, 'y'].cat.categories) == ['A', 'B', 'C']
+
+        assert c.load_partition(c.partitions.iloc[0], 'y').dtype == 'category'

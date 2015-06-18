@@ -94,7 +94,7 @@ class Castra(object):
     def append_categories(self, new):
         for col, cat in new.items():
             if cat:
-                with open(self.dirname('meta', 'categories', col), 'w') as f:
+                with open(self.dirname('meta', 'categories', col), 'a') as f:
                     f.write('\n'.join(cat))
 
     def load_categories(self):
@@ -132,19 +132,22 @@ class Castra(object):
     def dirname(self, *args):
         return os.path.join(self.path, *args)
 
-    def load_partition(self, name, columns):
+    def load_partition(self, name, columns, categorize=True):
         if isinstance(columns, Iterator):
             columns = list(columns)
         if not isinstance(columns, list):
-            df = self.load_partition(name, [columns])
+            df = self.load_partition(name, [columns], categorize=categorize)
             return df[df.columns[0]]
         arrays = [unpack_file(self.dirname(name, col))
                    for col in columns]
         index = unpack_file(self.dirname(name, '.index'))
 
-        return pd.DataFrame(dict(zip(columns, arrays)),
+        df = pd.DataFrame(dict(zip(columns, arrays)),
                             columns=columns,
                             index=pd.Index(index, dtype=self.index_dtype))
+        if categorize:
+            df = _categorize(self.categories, df)
+        return df
 
     def __getitem__(self, key):
         if isinstance(key, tuple):
@@ -154,7 +157,8 @@ class Castra(object):
         start, stop = key.start, key.stop
         names = select_partitions(self.partitions, key)
 
-        data_frames = [self.load_partition(name, columns) for name in names]
+        data_frames = [self.load_partition(name, columns, categorize=False)
+                       for name in names]
 
         data_frames[0] = data_frames[0].loc[start:]
         data_frames[-1] = data_frames[-1].loc[:stop]
