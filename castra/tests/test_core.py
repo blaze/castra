@@ -157,13 +157,16 @@ def test_column_access():
 
 def test_reload():
     path = tempfile.mkdtemp(prefix='castra-')
-    c = Castra(template=A, path=path)
-    c.extend(A)
+    try:
+        c = Castra(template=A, path=path)
+        c.extend(A)
 
-    d = Castra(path=path)
+        d = Castra(path=path)
 
-    assert c.columns == d.columns
-    assert (c.partitions == d.partitions).all()
+        assert c.columns == d.columns
+        assert (c.partitions == d.partitions).all()
+    finally:
+        shutil.rmtree(path)
 
 
 def test_index_dtype_matches_template():
