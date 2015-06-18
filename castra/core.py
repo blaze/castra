@@ -23,7 +23,7 @@ def _safe_mkdir(path):
 
 
 class Castra(object):
-    def __init__(self, path=None, template=None):
+    def __init__(self, path=None, template=None, categories=None):
         # check if we should create a random path
         if path is None:
             self.path = tempfile.mkdtemp(prefix='castra-')
@@ -48,14 +48,25 @@ class Castra(object):
                     "'template' must be 'None' when opening a Castra")
             self.load_meta()
             self.load_partitions()
+            self.load_categories()
 
         # or we don't, in which case we need a template
         elif template is not None:
             mkdir(self.meta_path)
+            mkdir(self.dirname('meta', 'categories'))
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
             self.partitions = pd.Series([], dtype='O',
                                         index=template.index.__class__([]))
+            if isinstance(categories, (list, tuple)):
+                self.categories = dict((col, []) for col in categories)
+            elif categories is True:
+                self.categories = dict((col, [])
+                                       for col in template.columns
+                                       if template.dtypes[col] == 'object')
+            else:
+                self.categories = dict()
+
             self.flush_meta()
             self.save_partitions()
         else:
@@ -82,12 +93,29 @@ class Castra(object):
         with open(join(self.meta_path, 'plist'), 'w') as f:
             f.write(dumps(self.partitions))
 
+    def append_categories(self, new):
+        for col, cat in new.items():
+            if cat:
+                with open(self.dirname('meta', 'categories', col), 'w') as f:
+                    f.write('\n'.join(cat))
+
+    def load_categories(self):
+        self.categories = dict()
+        for col in self.columns:
+            fn = self.dirname('meta', 'categories', col)
+            if os.path.exists(fn):
+                with open(fn) as f:
+                    self.categories[col] = f.read().split('\n')
+
     def extend(self, df):
         # TODO: Ensure that df is consistent with existing data
         index = df.index.values
         partition_name = '--'.join([escape(index.min()), escape(index.max())])
 
         mkdir(self.dirname(partition_name))
+
+        new_categories = _decategorize(self.categories, df)
+        self.append_categories(new_categories)
 
         # Store columns
         for col in df.columns:
@@ -132,7 +160,9 @@ class Castra(object):
 
         data_frames[0] = data_frames[0].loc[start:]
         data_frames[-1] = data_frames[-1].loc[:stop]
-        return pd.concat(data_frames)
+        df = pd.concat(data_frames)
+        df = _categorize(self.categories, df)
+        return df
 
     def drop(self):
         if os.path.exists(self.path):
@@ -166,6 +196,7 @@ class Castra(object):
         self.meta_path = self.dirname('meta')
         self.load_meta()
         self.load_partitions()
+        self.load_categories()
 
     def to_dask(self, columns=None):
         if columns is None:
@@ -242,3 +273,57 @@ def select_partitions(partitions, key):
         names.append(partitions.iloc[last + 1])
 
     return names
+
+
+def _decategorize(categories, df):
+    """ Strip object dtypes from dataframe, update categories
+
+    Given a DataFrame
+
+    >>> df = pd.DataFrame({'x': [1, 2, 3], 'y': ['C', 'B', 'B']})
+
+    And a dict of known categories
+
+    >>> _ = categories = {'y': ['A', 'B']}
+
+    Update dict and dataframe in place
+
+    >>> _decategorize(categories, df)
+
+    >>> df
+       x  y
+    0  1  2
+    1  2  1
+    2  3  1
+
+    >>> categories  # doctest: +SKIP
+    {'y': ['A', 'B', 'C']}
+    """
+    extra = dict()
+    for col, cat in categories.items():
+        extra[col] = set(df[col]) - set(cat)
+        cat.extend(extra[col])
+        df[col] = pd.Categorical(df[col], categories=cat).codes
+    return extra
+
+
+def _categorize(categories, df):
+    """ Categorize columns in dataframe
+
+    >>> df = pd.DataFrame({'x': [1, 2, 3], 'y': [0, 2, 0]})
+    >>> categories = {'y': ['A', 'B', 'c']}
+    >>> _categorize(categories, df)
+       x  y
+    0  1  A
+    1  2  c
+    2  3  A
+    """
+    if isinstance(df, pd.Series):
+        if df.name in categories:
+            cat = pd.Categorical.from_codes(df.values, categories[df.name])
+            return pd.Series(cat, index=df.index)
+        else:
+            return df
+    for col in categories:
+        df[col] = pd.Categorical.from_codes(df[col], categories[col])
+    return df
