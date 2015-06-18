@@ -172,7 +172,7 @@ class Castra(object):
             columns = self.columns
         import dask.dataframe as dd
         name = next(dd.core.names)
-        dsk = dict(((name, i), (self.load_partition, part, columns))
+        dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
                     for i, part in enumerate(self.partitions.values))
         divisions = list(self.partitions.index[:-1])
         if isinstance(columns, list):
