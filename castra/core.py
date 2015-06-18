@@ -39,10 +39,8 @@ class Castra(object):
         elif not isdir(self.path):
             raise ValueError("'path': %s must be a directory")
 
-        self.meta_path = self.dirname('meta')
-
         # either we have a meta directory
-        if exists(self.meta_path) and isdir(self.meta_path):
+        if exists(self.dirname('meta')) and isdir(self.dirname('meta')):
             if template is not None:
                 raise ValueError(
                     "'template' must be 'None' when opening a Castra")
@@ -52,7 +50,7 @@ class Castra(object):
 
         # or we don't, in which case we need a template
         elif template is not None:
-            mkdir(self.meta_path)
+            mkdir(self.dirname('meta'))
             mkdir(self.dirname('meta', 'categories'))
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
@@ -76,21 +74,21 @@ class Castra(object):
     def load_meta(self, loads=pickle.loads):
         meta = []
         for name in ['columns', 'dtypes', 'index_dtype']:
-            with open(join(self.meta_path, name), 'r') as f:
+            with open(self.dirname('meta', name), 'r') as f:
                 meta.append(loads(f.read()))
         self.columns, self.dtype, self.index_dtype = meta
 
     def flush_meta(self, dumps=pickle.dumps):
         for name in ['columns', 'dtypes', 'index_dtype']:
-            with open(join(self.meta_path, name), 'w') as f:
+            with open(self.dirname('meta', name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
 
     def load_partitions(self, loads=pickle.loads):
-        with open(join(self.meta_path, 'plist'), 'r') as f:
+        with open(self.dirname('meta', 'plist'), 'r') as f:
             self.partitions = pickle.loads(f.read())
 
     def save_partitions(self, dumps=pickle.dumps):
-        with open(join(self.meta_path, 'plist'), 'w') as f:
+        with open(self.dirname('meta', 'plist'), 'w') as f:
             f.write(dumps(self.partitions))
 
     def append_categories(self, new):
@@ -193,7 +191,6 @@ class Castra(object):
     def __setstate__(self, state):
         self.path = state[0]
         self._explicitly_given_path = state[1]
-        self.meta_path = self.dirname('meta')
         self.load_meta()
         self.load_partitions()
         self.load_categories()
