@@ -48,6 +48,7 @@ class Castra(object):
                     "'template' must be 'None' when opening a Castra")
             self.load_meta()
             self.load_partitions()
+
         # or we don't, in which case we need a template
         elif template is not None:
             mkdir(self.meta_path)
@@ -100,6 +101,7 @@ class Castra(object):
         bloscpack.pack_ndarray_file(x, fn)
 
         self.partitions[index.max()] = partition_name
+        self.flush()
 
     def dirname(self, *args):
         return os.path.join(self.path, *args)
@@ -146,14 +148,16 @@ class Castra(object):
         if not self._explicitly_given_path:
             self.drop()
         else:
-            self.save_partitions()
+            self.flush()
 
     def __del__(self):
         if not self._explicitly_given_path:
             self.drop()
+        else:
+            self.flush()
 
     def __getstate__(self):
-        self.save_partitions()
+        self.flush()
         return (self.path, self._explicitly_given_path)
 
     def __setstate__(self, state):

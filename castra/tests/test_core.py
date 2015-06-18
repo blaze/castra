@@ -155,6 +155,17 @@ def test_column_access():
         tm.assert_series_equal(df, pd.concat([A.x, B.x]))
 
 
+def test_reload():
+    path = tempfile.mkdtemp(prefix='castra-')
+    c = Castra(template=A, path=path)
+    c.extend(A)
+
+    d = Castra(path=path)
+
+    assert c.columns == d.columns
+    assert (c.partitions == d.partitions).all()
+
+
 def test_index_dtype_matches_template():
     with Castra(template=A) as c:
         assert c.partitions.index.dtype == A.index.dtype
