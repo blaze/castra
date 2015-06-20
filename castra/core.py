@@ -112,7 +112,7 @@ class Castra(object):
 
         mkdir(self.dirname(partition_name))
 
-        new_categories = _decategorize(self.categories, df)
+        new_categories, self.categories, df = _decategorize(self.categories, df)
         self.append_categories(new_categories)
 
         # Store columns
@@ -289,23 +289,26 @@ def _decategorize(categories, df):
 
     Update dict and dataframe in place
 
-    >>> _decategorize(categories, df)
-
+    >>> extra, categories, df = _decategorize(categories, df)
+    >>> extra
+    {'y': ['C']}
+    >>> categories
+    {'y': ['A', 'B', 'C']}
     >>> df
        x  y
     0  1  2
     1  2  1
     2  3  1
-
-    >>> categories  # doctest: +SKIP
-    {'y': ['A', 'B', 'C']}
     """
     extra = dict()
+    new_categories = dict()
+    new_columns = dict((col, df[col]) for col in df.columns)
     for col, cat in categories.items():
-        extra[col] = set(df[col]) - set(cat)
-        cat.extend(extra[col])
-        df[col] = pd.Categorical(df[col], categories=cat).codes
-    return extra
+        extra[col] = list(set(df[col]) - set(cat))
+        new_categories[col] = cat + extra[col]
+        new_columns[col] = pd.Categorical(df[col], new_categories[col]).codes
+    new_df = pd.DataFrame(new_columns, columns=df.columns, index=df.index)
+    return extra, new_categories, new_df
 
 
 def _categorize(categories, df):
@@ -325,6 +328,12 @@ def _categorize(categories, df):
             return pd.Series(cat, index=df.index)
         else:
             return df
-    for col in categories:
-        df[col] = pd.Categorical.from_codes(df[col], categories[col])
-    return df
+
+    else:
+        return pd.DataFrame(
+                dict((col, pd.Categorical.from_codes(df[col], categories[col])
+                           if col in categories
+                           else df[col])
+                    for col in df.columns),
+                columns=df.columns,
+                index=df.index)
