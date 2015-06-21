@@ -23,7 +23,7 @@ def _safe_mkdir(path):
 
 
 class Castra(object):
-    def __init__(self, path=None, template=None):
+    def __init__(self, path=None, template=None, categories=None):
         # check if we should create a random path
         if path is None:
             self.path = tempfile.mkdtemp(prefix='castra-')
@@ -39,23 +39,32 @@ class Castra(object):
         elif not isdir(self.path):
             raise ValueError("'path': %s must be a directory")
 
-        self.meta_path = self.dirname('meta')
-
         # either we have a meta directory
-        if exists(self.meta_path) and isdir(self.meta_path):
+        if exists(self.dirname('meta')) and isdir(self.dirname('meta')):
             if template is not None:
                 raise ValueError(
                     "'template' must be 'None' when opening a Castra")
             self.load_meta()
             self.load_partitions()
+            self.load_categories()
 
         # or we don't, in which case we need a template
         elif template is not None:
-            mkdir(self.meta_path)
+            mkdir(self.dirname('meta'))
+            mkdir(self.dirname('meta', 'categories'))
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
             self.partitions = pd.Series([], dtype='O',
                                         index=template.index.__class__([]))
+            if isinstance(categories, (list, tuple)):
+                self.categories = dict((col, []) for col in categories)
+            elif categories is True:
+                self.categories = dict((col, [])
+                                       for col in template.columns
+                                       if template.dtypes[col] == 'object')
+            else:
+                self.categories = dict()
+
             self.flush_meta()
             self.save_partitions()
         else:
@@ -65,22 +74,36 @@ class Castra(object):
     def load_meta(self, loads=pickle.loads):
         meta = []
         for name in ['columns', 'dtypes', 'index_dtype']:
-            with open(join(self.meta_path, name), 'r') as f:
+            with open(self.dirname('meta', name), 'r') as f:
                 meta.append(loads(f.read()))
         self.columns, self.dtype, self.index_dtype = meta
 
     def flush_meta(self, dumps=pickle.dumps):
         for name in ['columns', 'dtypes', 'index_dtype']:
-            with open(join(self.meta_path, name), 'w') as f:
+            with open(self.dirname('meta', name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
 
     def load_partitions(self, loads=pickle.loads):
-        with open(join(self.meta_path, 'plist'), 'r') as f:
+        with open(self.dirname('meta', 'plist'), 'r') as f:
             self.partitions = pickle.loads(f.read())
 
     def save_partitions(self, dumps=pickle.dumps):
-        with open(join(self.meta_path, 'plist'), 'w') as f:
+        with open(self.dirname('meta', 'plist'), 'w') as f:
             f.write(dumps(self.partitions))
+
+    def append_categories(self, new):
+        for col, cat in new.items():
+            if cat:
+                with open(self.dirname('meta', 'categories', col), 'a') as f:
+                    f.write('\n'.join(cat))
+
+    def load_categories(self):
+        self.categories = dict()
+        for col in self.columns:
+            fn = self.dirname('meta', 'categories', col)
+            if os.path.exists(fn):
+                with open(fn) as f:
+                    self.categories[col] = f.read().split('\n')
 
     def extend(self, df):
         # TODO: Ensure that df is consistent with existing data
@@ -88,6 +111,9 @@ class Castra(object):
         partition_name = '--'.join([escape(index.min()), escape(index.max())])
 
         mkdir(self.dirname(partition_name))
+
+        new_categories, self.categories, df = _decategorize(self.categories, df)
+        self.append_categories(new_categories)
 
         # Store columns
         for col in df.columns:
@@ -106,19 +132,22 @@ class Castra(object):
     def dirname(self, *args):
         return os.path.join(self.path, *args)
 
-    def load_partition(self, name, columns):
+    def load_partition(self, name, columns, categorize=True):
         if isinstance(columns, Iterator):
             columns = list(columns)
         if not isinstance(columns, list):
-            df = self.load_partition(name, [columns])
+            df = self.load_partition(name, [columns], categorize=categorize)
             return df[df.columns[0]]
         arrays = [unpack_file(self.dirname(name, col))
                    for col in columns]
         index = unpack_file(self.dirname(name, '.index'))
 
-        return pd.DataFrame(dict(zip(columns, arrays)),
+        df = pd.DataFrame(dict(zip(columns, arrays)),
                             columns=columns,
                             index=pd.Index(index, dtype=self.index_dtype))
+        if categorize:
+            df = _categorize(self.categories, df)
+        return df
 
     def __getitem__(self, key):
         if isinstance(key, tuple):
@@ -128,11 +157,14 @@ class Castra(object):
         start, stop = key.start, key.stop
         names = select_partitions(self.partitions, key)
 
-        data_frames = [self.load_partition(name, columns) for name in names]
+        data_frames = [self.load_partition(name, columns, categorize=False)
+                       for name in names]
 
         data_frames[0] = data_frames[0].loc[start:]
         data_frames[-1] = data_frames[-1].loc[:stop]
-        return pd.concat(data_frames)
+        df = pd.concat(data_frames)
+        df = _categorize(self.categories, df)
+        return df
 
     def drop(self):
         if os.path.exists(self.path):
@@ -163,9 +195,9 @@ class Castra(object):
     def __setstate__(self, state):
         self.path = state[0]
         self._explicitly_given_path = state[1]
-        self.meta_path = self.dirname('meta')
         self.load_meta()
         self.load_partitions()
+        self.load_categories()
 
     def to_dask(self, columns=None):
         if columns is None:
@@ -242,3 +274,66 @@ def select_partitions(partitions, key):
         names.append(partitions.iloc[last + 1])
 
     return names
+
+
+def _decategorize(categories, df):
+    """ Strip object dtypes from dataframe, update categories
+
+    Given a DataFrame
+
+    >>> df = pd.DataFrame({'x': [1, 2, 3], 'y': ['C', 'B', 'B']})
+
+    And a dict of known categories
+
+    >>> _ = categories = {'y': ['A', 'B']}
+
+    Update dict and dataframe in place
+
+    >>> extra, categories, df = _decategorize(categories, df)
+    >>> extra
+    {'y': ['C']}
+    >>> categories
+    {'y': ['A', 'B', 'C']}
+    >>> df
+       x  y
+    0  1  2
+    1  2  1
+    2  3  1
+    """
+    extra = dict()
+    new_categories = dict()
+    new_columns = dict((col, df[col]) for col in df.columns)
+    for col, cat in categories.items():
+        extra[col] = list(set(df[col]) - set(cat))
+        new_categories[col] = cat + extra[col]
+        new_columns[col] = pd.Categorical(df[col], new_categories[col]).codes
+    new_df = pd.DataFrame(new_columns, columns=df.columns, index=df.index)
+    return extra, new_categories, new_df
+
+
+def _categorize(categories, df):
+    """ Categorize columns in dataframe
+
+    >>> df = pd.DataFrame({'x': [1, 2, 3], 'y': [0, 2, 0]})
+    >>> categories = {'y': ['A', 'B', 'c']}
+    >>> _categorize(categories, df)
+       x  y
+    0  1  A
+    1  2  c
+    2  3  A
+    """
+    if isinstance(df, pd.Series):
+        if df.name in categories:
+            cat = pd.Categorical.from_codes(df.values, categories[df.name])
+            return pd.Series(cat, index=df.index)
+        else:
+            return df
+
+    else:
+        return pd.DataFrame(
+                dict((col, pd.Categorical.from_codes(df[col], categories[col])
+                           if col in categories
+                           else df[col])
+                    for col in df.columns),
+                columns=df.columns,
+                index=df.index)

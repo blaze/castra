@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import pandas.util.testing as tm
+import numpy as np
 from castra import Castra
 from castra.core import _safe_mkdir
 import tempfile
@@ -193,3 +194,21 @@ def test_to_dask_dataframe():
         assert isinstance(df, dd.Series)
         assert list(df.divisions) == [2]
         tm.assert_series_equal(df.compute(), c[:, 'x'])
+
+
+def test_categorize():
+    A = pd.DataFrame({'x': [1, 2, 3], 'y': ['A', 'B', 'A']},
+                     columns=['x', 'y'], index=[0, 10, 20])
+    B = pd.DataFrame({'x': [4, 5, 6], 'y': ['C', 'B', 'A']},
+                     columns=['x', 'y'], index=[30, 40, 50])
+
+    with Castra(template=A, categories=['y']) as c:
+        c.extend(A)
+        assert c[:].dtypes['y'] == 'category'
+        assert c[:]['y'].cat.codes.dtype == np.dtype('i1')
+        assert list(c[:, 'y'].cat.categories) == ['A', 'B']
+
+        c.extend(B)
+        assert list(c[:, 'y'].cat.categories) == ['A', 'B', 'C']
+
+        assert c.load_partition(c.partitions.iloc[0], 'y').dtype == 'category'
