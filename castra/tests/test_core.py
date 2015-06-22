@@ -166,6 +166,7 @@ def test_reload():
 
         assert c.columns == d.columns
         assert (c.partitions == d.partitions).all()
+        assert c.minimum == d.minimum
     finally:
         shutil.rmtree(path)
 
@@ -187,12 +188,12 @@ def test_to_dask_dataframe():
 
         df = c.to_dask()
         assert isinstance(df, dd.DataFrame)
-        assert list(df.divisions) == [2]
+        assert list(df.divisions) == [1, 2, 20]
         tm.assert_frame_equal(df.compute(), c[:])
 
         df = c.to_dask('x')
         assert isinstance(df, dd.Series)
-        assert list(df.divisions) == [2]
+        assert list(df.divisions) == [1, 2, 20]
         tm.assert_series_equal(df.compute(), c[:, 'x'])
 
 

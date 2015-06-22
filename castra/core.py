@@ -59,6 +59,7 @@ class Castra(object):
                 list(template.columns), template.dtypes, template.index.dtype
             self.partitions = pd.Series([], dtype='O',
                                         index=template.index.__class__([]))
+            self.minimum = None
             if isinstance(categories, (list, tuple)):
                 self.categories = dict((col, []) for col in categories)
             elif categories is True:
@@ -88,9 +89,13 @@ class Castra(object):
 
     def load_partitions(self, loads=pickle.loads):
         with open(self.dirname('meta', 'plist'), 'r') as f:
-            self.partitions = pickle.loads(f.read())
+            self.partitions = pickle.load(f)
+        with open(self.dirname('meta', 'minimum'), 'r') as f:
+            self.minimum = pickle.load(f)
 
     def save_partitions(self, dumps=pickle.dumps):
+        with open(self.dirname('meta', 'minimum'), 'w') as f:
+            f.write(dumps(self.minimum))
         with open(self.dirname('meta', 'plist'), 'w') as f:
             f.write(dumps(self.partitions))
 
@@ -130,6 +135,8 @@ class Castra(object):
         x = df.index.values
         bloscpack.pack_ndarray_file(x, fn)
 
+        if len(self.partitions) == 0:
+            self.minimum = index.min()
         self.partitions[index.max()] = partition_name
         self.flush()
 
@@ -210,7 +217,7 @@ class Castra(object):
         name = next(dd.core.names)
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
                     for i, part in enumerate(self.partitions.values))
-        divisions = list(self.partitions.index[:-1])
+        divisions = [self.minimum] + list(self.partitions.index)
         if isinstance(columns, list):
             return dd.DataFrame(dsk, name, columns, divisions)
         else:
