@@ -2,7 +2,10 @@ from collections import Iterator
 import os
 from os import mkdir
 from os.path import exists, isdir, join
-import pickle
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
 import shutil
 import tempfile
 
@@ -95,7 +98,7 @@ class Castra(object):
         for col, cat in new.items():
             if cat:
                 with open(self.dirname('meta', 'categories', col), 'a') as f:
-                    f.write('\n'.join(cat))
+                    f.write('\n'.join(map(pickle.dumps, cat)))
 
     def load_categories(self):
         self.categories = dict()
@@ -103,7 +106,8 @@ class Castra(object):
             fn = self.dirname('meta', 'categories', col)
             if os.path.exists(fn):
                 with open(fn) as f:
-                    self.categories[col] = f.read().split('\n')
+                    self.categories[col] = list(map(pickle.loads,
+                                                f.read().split('\n')))
 
     def extend(self, df):
         # TODO: Ensure that df is consistent with existing data

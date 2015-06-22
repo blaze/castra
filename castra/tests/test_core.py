@@ -197,18 +197,18 @@ def test_to_dask_dataframe():
 
 
 def test_categorize():
-    A = pd.DataFrame({'x': [1, 2, 3], 'y': ['A', 'B', 'A']},
+    A = pd.DataFrame({'x': [1, 2, 3], 'y': ['A', None, 'A']},
                      columns=['x', 'y'], index=[0, 10, 20])
-    B = pd.DataFrame({'x': [4, 5, 6], 'y': ['C', 'B', 'A']},
+    B = pd.DataFrame({'x': [4, 5, 6], 'y': ['C', None, 'A']},
                      columns=['x', 'y'], index=[30, 40, 50])
 
     with Castra(template=A, categories=['y']) as c:
         c.extend(A)
         assert c[:].dtypes['y'] == 'category'
         assert c[:]['y'].cat.codes.dtype == np.dtype('i1')
-        assert list(c[:, 'y'].cat.categories) == ['A', 'B']
+        assert list(c[:, 'y'].cat.categories) == ['A', None]
 
         c.extend(B)
-        assert list(c[:, 'y'].cat.categories) == ['A', 'B', 'C']
+        assert list(c[:, 'y'].cat.categories) == ['A', None, 'C']
 
         assert c.load_partition(c.partitions.iloc[0], 'y').dtype == 'category'
