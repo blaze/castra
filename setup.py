@@ -13,6 +13,7 @@ setup(name='castra',
       keywords='',
       packages=['castra'],
       package_data={'castra': ['tests/*.py']},
+      install_requires=list(open('requirements.txt').read().strip().split('\n')),
       long_description=(open('README.rst').read() if exists('README.rst')
                         else ''),
       zip_safe=False)
