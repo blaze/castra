@@ -8,6 +8,7 @@ except ImportError:
     import pickle
 import shutil
 import tempfile
+from functools import partial
 
 import blosc
 import bloscpack
@@ -82,7 +83,7 @@ class Castra(object):
                 meta.append(loads(f.read()))
         self.columns, self.dtype, self.index_dtype = meta
 
-    def flush_meta(self, dumps=pickle.dumps):
+    def flush_meta(self, dumps=partial(pickle.dumps, protocol=2)):
         for name in ['columns', 'dtypes', 'index_dtype']:
             with open(self.dirname('meta', name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
@@ -93,26 +94,30 @@ class Castra(object):
         with open(self.dirname('meta', 'minimum'), 'r') as f:
             self.minimum = pickle.load(f)
 
-    def save_partitions(self, dumps=pickle.dumps):
+    def save_partitions(self, dumps=partial(pickle.dumps, protocol=2)):
         with open(self.dirname('meta', 'minimum'), 'w') as f:
             f.write(dumps(self.minimum))
         with open(self.dirname('meta', 'plist'), 'w') as f:
             f.write(dumps(self.partitions))
 
-    def append_categories(self, new):
+    def append_categories(self, new, dumps=partial(pickle.dumps, protocol=2)):
+        separator = '-sep-'
         for col, cat in new.items():
             if cat:
                 with open(self.dirname('meta', 'categories', col), 'a') as f:
-                    f.write('\n'.join(map(pickle.dumps, cat)))
+                    f.write(separator.join(map(dumps, cat)))
+                    f.write(separator)
 
-    def load_categories(self):
+    def load_categories(self, loads=pickle.loads):
+        separator = '-sep-'
         self.categories = dict()
         for col in self.columns:
             fn = self.dirname('meta', 'categories', col)
             if os.path.exists(fn):
                 with open(fn) as f:
-                    self.categories[col] = list(map(pickle.loads,
-                                                f.read().split('\n')))
+                    text = f.read()
+                L = text.split(separator)[:-1]
+                self.categories[col] = list(map(loads, L))
 
     def extend(self, df):
         # TODO: Ensure that df is consistent with existing data

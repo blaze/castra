@@ -213,3 +213,8 @@ def test_categorize():
         assert list(c[:, 'y'].cat.categories) == ['A', None, 'C']
 
         assert c.load_partition(c.partitions.iloc[0], 'y').dtype == 'category'
+
+        c.flush()
+
+        d = Castra(path=c.path)
+        tm.assert_frame_equal(c[:], d[:])
