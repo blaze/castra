@@ -219,7 +219,7 @@ class Castra(object):
         if columns is None:
             columns = self.columns
         import dask.dataframe as dd
-        name = next(dd.core.names)
+        name = 'from-castra' + next(dd.core.tokens)
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
                     for i, part in enumerate(self.partitions.values))
         divisions = [self.minimum] + list(self.partitions.index)
