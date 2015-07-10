@@ -58,6 +58,7 @@ class Castra(object):
             mkdir(self.dirname('meta', 'categories'))
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
+            self.axis_names = [template.index.name, template.columns.name]
             self.partitions = pd.Series([], dtype='O',
                                         index=template.index.__class__([]))
             self.minimum = None
@@ -78,13 +79,13 @@ class Castra(object):
 
     def load_meta(self, loads=pickle.loads):
         meta = []
-        for name in ['columns', 'dtypes', 'index_dtype']:
+        for name in ['columns', 'dtypes', 'index_dtype', 'axis_names']:
             with open(self.dirname('meta', name), 'r') as f:
                 meta.append(loads(f.read()))
-        self.columns, self.dtype, self.index_dtype = meta
+        self.columns, self.dtype, self.index_dtype, self.axis_names = meta
 
     def flush_meta(self, dumps=partial(pickle.dumps, protocol=2)):
-        for name in ['columns', 'dtypes', 'index_dtype']:
+        for name in ['columns', 'dtypes', 'index_dtype', 'axis_names']:
             with open(self.dirname('meta', name), 'w') as f:
                 f.write(dumps(getattr(self, name)))
 
@@ -154,13 +155,13 @@ class Castra(object):
         if not isinstance(columns, list):
             df = self.load_partition(name, [columns], categorize=categorize)
             return df[df.columns[0]]
-        arrays = [unpack_file(self.dirname(name, col))
-                   for col in columns]
+        arrays = [unpack_file(self.dirname(name, col)) for col in columns]
         index = unpack_file(self.dirname(name, '.index'))
 
         df = pd.DataFrame(dict(zip(columns, arrays)),
-                            columns=columns,
-                            index=pd.Index(index, dtype=self.index_dtype))
+                          columns=pd.Index(columns, name=self.axis_names[1]),
+                          index=pd.Index(index, dtype=self.index_dtype,
+                                         name=self.axis_names[0]))
         if categorize:
             df = _categorize(self.categories, df)
         return df
