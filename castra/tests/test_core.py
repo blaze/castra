@@ -22,6 +22,13 @@ B = pd.DataFrame({'x': [10, 20],
                  index=[10, 20])
 
 
+C = pd.DataFrame({'x': [10, 20],
+                  'y': [10., 20.],
+                  'z': [0, 1]},
+                 columns=['x', 'y', 'z']).set_index('z')
+C.columns.name = 'cols'
+
+
 class Base(unittest.TestCase):
 
     def setUp(self):
@@ -218,3 +225,11 @@ def test_categorize():
 
         d = Castra(path=c.path)
         tm.assert_frame_equal(c[:], d[:])
+
+
+def test_save_axis_names():
+    with Castra(template=C) as c:
+        c.extend(C)
+        assert c[:].index.name == 'z'
+        assert c[:].columns.name == 'cols'
+        tm.assert_frame_equal(c[:], C)
