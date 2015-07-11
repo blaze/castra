@@ -1,19 +1,26 @@
 from collections import Iterator
+
 import os
+
 from os import mkdir
-from os.path import exists, isdir, join
+from os.path import exists, isdir
+
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
+
 import shutil
 import tempfile
+
 from functools import partial
 
 import blosc
 import bloscpack
+
 import numpy as np
 import pandas as pd
+
 from pandas import msgpack
 
 
