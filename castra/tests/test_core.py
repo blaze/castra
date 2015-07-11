@@ -233,3 +233,14 @@ def test_save_axis_names():
         assert c[:].index.name == 'z'
         assert c[:].columns.name == 'cols'
         tm.assert_frame_equal(c[:], C)
+
+
+def test_same_categories_when_already_categorized():
+    A = pd.DataFrame({'x': [1, 2] * 1000,
+                      'y': [1., 2.] * 1000,
+                      'z': np.random.choice(list('abc'), size=2000)},
+                     columns=list('xyz'))
+    A['z'] = A.z.astype('category')
+    with Castra(template=A, categories=['z']) as c:
+        c.extend(A)
+        assert c.categories['z'] == A.z.cat.categories.tolist()

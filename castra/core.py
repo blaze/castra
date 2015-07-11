@@ -1,19 +1,26 @@
 from collections import Iterator
+
 import os
+
 from os import mkdir
-from os.path import exists, isdir, join
+from os.path import exists, isdir
+
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
+
 import shutil
 import tempfile
+
 from functools import partial
 
 import blosc
 import bloscpack
+
 import numpy as np
 import pandas as pd
+
 from pandas import msgpack
 
 
@@ -321,7 +328,9 @@ def _decategorize(categories, df):
     new_categories = dict()
     new_columns = dict((col, df[col]) for col in df.columns)
     for col, cat in categories.items():
-        extra[col] = list(set(df[col]) - set(cat))
+        idx = pd.Index(df[col])
+        idx = getattr(idx, 'categories', idx)
+        extra[col] = idx[~idx.isin(cat)].unique().tolist()
         new_categories[col] = cat + extra[col]
         new_columns[col] = pd.Categorical(df[col], new_categories[col]).codes
     new_df = pd.DataFrame(new_columns, columns=df.columns, index=df.index)
