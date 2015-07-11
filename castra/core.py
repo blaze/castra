@@ -76,6 +76,15 @@ class Castra(object):
             else:
                 self.categories = dict()
 
+            if self.categories:
+                if set(self.categories) - set(template.dtypes.index.values):
+                    raise ValueError('passed in categories %s are not all '
+                                     'contained in template dataframe columns '
+                                     '%s' %
+                                     (set(self.categories),
+                                      set(template.dtypes.index.values)))
+                for c in self.categories:
+                    self.dtypes[c] = pd.core.categorical.CategoricalDtype()
 
             mkdir(self.dirname('meta'))
             mkdir(self.dirname('meta', 'categories'))
