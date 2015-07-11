@@ -1,14 +1,18 @@
+
 import os
-import pandas as pd
-import pandas.util.testing as tm
-import numpy as np
-from castra import Castra
-from castra.core import _safe_mkdir
 import tempfile
 import pickle
 import shutil
-import nose.tools as nt
-import unittest
+
+import pandas as pd
+import pandas.util.testing as tm
+
+import numpy as np
+
+import pytest
+
+from castra import Castra
+from castra.core import _safe_mkdir
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -29,84 +33,93 @@ C = pd.DataFrame({'x': [10, 20],
 C.columns.name = 'cols'
 
 
-class Base(unittest.TestCase):
-
-    def setUp(self):
-        self.path = tempfile.mkdtemp(prefix='castra-')
-
-    def tearDown(self):
-        shutil.rmtree(self.path)
-
-
-class TestSafeMkdir(Base):
-
-    def test_safe_mkdir_with_new(self):
-        path = os.path.join(self.path, 'db')
-        _safe_mkdir(path)
-        nt.assert_true(os.path.exists(path))
-        nt.assert_true(os.path.isdir(path))
-
-    def test_safe_mkdir_with_existing(self):
-        # an existing path should not raise an exception
-        _safe_mkdir(self.path)
+@pytest.yield_fixture
+def base():
+    d = tempfile.mkdtemp(prefix='castra-')
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d)
 
 
-class TestConstructorAndContextManager(Base):
+def test_safe_mkdir_with_new(base):
+    path = os.path.join(base, 'db')
+    _safe_mkdir(path)
+    assert os.path.exists(path)
+    assert os.path.isdir(path)
 
-    def test_create_with_random_directory(self):
-        Castra(template=A)
 
-    def test_create_with_non_existing_path(self):
-        path = os.path.join(self.path, 'db')
-        Castra(path=path, template=A)
+def test_safe_mkdir_with_existing(base):
+    # an existing path should not raise an exception
+    _safe_mkdir(base)
 
-    def test_create_with_existing_path(self):
-        Castra(path=self.path, template=A)
 
-    def test_exception_with_non_dir(self):
-        file_ = os.path.join(self.path, 'file')
-        with open(file_, 'w') as f:
-            f.write('file')
-        nt.assert_raises(ValueError, Castra, path=file_)
+def test_create_with_random_directory():
+    Castra(template=A)
 
-    def test_exception_with_existing_castra_and_template(self):
-        with Castra(path=self.path, template=A) as c:
-            c.extend(A)
-        nt.assert_raises(ValueError, Castra, path=self.path, template=A)
 
-    def test_exception_with_empty_dir_and_no_template(self):
-        nt.assert_raises(ValueError, Castra, path=self.path)
+def test_create_with_non_existing_path(base):
+    path = os.path.join(base, 'db')
+    Castra(path=path, template=A)
 
-    def test_load(self):
-        with Castra(path=self.path, template=A) as c:
-            c.extend(A)
-            c.extend(B)
 
-        loaded = Castra(path=self.path)
-        tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
+def test_create_with_existing_path(base):
+    Castra(path=base, template=A)
 
-    def test_del_with_random_dir(self):
-        c = Castra(template=A)
+
+def test_exception_with_non_dir(base):
+    file_ = os.path.join(base, 'file')
+    with open(file_, 'w') as f:
+        f.write('file')
+    with pytest.raises(ValueError):
+        Castra(file_)
+
+
+def test_exception_with_existing_castra_and_template(base):
+    with Castra(path=base, template=A) as c:
+        c.extend(A)
+    with pytest.raises(ValueError):
+        Castra(path=base, template=A)
+
+
+def test_exception_with_empty_dir_and_no_template(base):
+    with pytest.raises(ValueError):
+        Castra(path=base)
+
+
+def test_load(base):
+    with Castra(path=base, template=A) as c:
+        c.extend(A)
+        c.extend(B)
+
+    loaded = Castra(path=base)
+    tm.assert_frame_equal(pd.concat([A, B]), loaded[:])
+
+
+def test_del_with_random_dir():
+    c = Castra(template=A)
+    assert os.path.exists(c.path)
+    c.__del__()
+    assert not os.path.exists(c.path)
+
+
+def test_context_manager_with_random_dir():
+    with Castra(template=A) as c:
         assert os.path.exists(c.path)
-        c.__del__()
-        assert not os.path.exists(c.path)
+    assert not os.path.exists(c.path)
 
-    def test_context_manager_with_random_dir(self):
-        with Castra(template=A) as c:
-            assert os.path.exists(c.path)
-        assert not os.path.exists(c.path)
 
-    def test_context_manager_with_specific_dir(self):
-        with Castra(path=self.path, template=A) as c:
-            assert os.path.exists(c.path)
+def test_context_manager_with_specific_dir(base):
+    with Castra(path=base, template=A) as c:
         assert os.path.exists(c.path)
+    assert os.path.exists(c.path)
 
 
 def test_timeseries():
     indices = [pd.DatetimeIndex(start=str(i), end=str(i+1), freq='w')
-                for i in range(2000, 2015)]
+               for i in range(2000, 2015)]
     dfs = [pd.DataFrame({'x': list(range(len(ind)))}, ind)
-                for ind in indices]
+           for ind in indices]
 
     with Castra(template=dfs[0]) as c:
         for df in dfs:
