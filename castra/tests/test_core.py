@@ -249,6 +249,17 @@ def test_same_categories_when_already_categorized():
         assert c.categories['z'] == A.z.cat.categories.tolist()
 
 
+def test_category_dtype():
+    A = pd.DataFrame({'x': [1, 2] * 3,
+                      'y': [1., 2.] * 3,
+                      'z': list('abcabc')},
+                     columns=list('xyz'))
+    with Castra(template=A, categories=['z']) as c:
+        c.extend(A)
+        assert A.dtypes['z'] == 'object'
+        assert c.dtypes['z'] == pd.core.categorical.CategoricalDtype()
+
+
 def test_do_not_create_dirs_if_template_fails():
     A = pd.DataFrame({'x': [1, 2] * 3,
                       'y': [1., 2.] * 3,
