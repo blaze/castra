@@ -15,7 +15,7 @@ matrix:
 
 install:
   # Install conda
-  - [[ $TRAVIS_PYTHON_VERSION == "osx" ]] && os=MacOSX || os=Linux
+  - if [[ $TRAVIS_PYTHON_VERSION == "osx" ]]; then os=MacOSX; else os=Linux; fi
   - wget http://repo.continuum.io/miniconda/Miniconda-latest-${os}-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
