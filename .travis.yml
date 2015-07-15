@@ -20,8 +20,8 @@ install:
   # Install dependencies
   - conda create -n castra python=$TRAVIS_PYTHON_VERSION pytest numpy pandas
   - source activate castra
-  - pip install git+git://github.com/Blosc/blosc
-  - pip install git+git://github.com/Blosc/bloscpack
+  - pip install blosc
+  - pip install bloscpack
 
 script:
   - py.test -x --doctest-modules --pyargs castra
