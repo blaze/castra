@@ -139,6 +139,8 @@ class Castra(object):
 
     def extend(self, df):
         # TODO: Ensure that df is consistent with existing data
+        if not df.index.is_monotonic_increasing:
+            df = df.sort_index(inplace=False)
         index = df.index.values
         partition_name = '--'.join([escape(index.min()), escape(index.max())])
 
