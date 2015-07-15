@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from castra import Castra
-from castra.core import _safe_mkdir
+from castra.core import mkdir
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -44,14 +44,14 @@ def base():
 
 def test_safe_mkdir_with_new(base):
     path = os.path.join(base, 'db')
-    _safe_mkdir(path)
+    mkdir(path)
     assert os.path.exists(path)
     assert os.path.isdir(path)
 
 
 def test_safe_mkdir_with_existing(base):
     # an existing path should not raise an exception
-    _safe_mkdir(base)
+    mkdir(base)
 
 
 def test_create_with_random_directory():

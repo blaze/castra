@@ -2,7 +2,6 @@ from collections import Iterator
 
 import os
 
-from os import mkdir
 from os.path import exists, isdir
 
 try:
@@ -28,30 +27,32 @@ def escape(text):
     return str(text)
 
 
-def _safe_mkdir(path):
+def mkdir(path):
     if not exists(path):
-        mkdir(path)
+        os.makedirs(path)
 
 
 class Castra(object):
+    meta_fields = ['columns', 'dtypes', 'index_dtype', 'axis_names']
+
     def __init__(self, path=None, template=None, categories=None):
         # check if we should create a random path
-        if path is None:
+        self._explicitly_given_path = path is not None
+
+        if not self._explicitly_given_path:
             self.path = tempfile.mkdtemp(prefix='castra-')
-            self._explicitly_given_path = False
         else:
             self.path = path
-            self._explicitly_given_path = True
 
         # check if the given path exists already and create it if it doesn't
-        if not exists(self.path):
-            mkdir(self.path)
+        mkdir(self.path)
+
         # raise an Exception if it isn't a directory
-        elif not isdir(self.path):
+        if not isdir(self.path):
             raise ValueError("'path': %s must be a directory")
 
         # either we have a meta directory
-        if exists(self.dirname('meta')) and isdir(self.dirname('meta')):
+        if isdir(self.dirname('meta')):
             if template is not None:
                 raise ValueError(
                     "'template' must be 'None' when opening a Castra")
@@ -78,6 +79,17 @@ class Castra(object):
             else:
                 self.categories = dict()
 
+            if self.categories:
+                categories = set(self.categories)
+                template_categories = set(template.dtypes.index.values)
+                if categories.difference(template_categories):
+                    raise ValueError('passed in categories %s are not all '
+                                     'contained in template dataframe columns '
+                                     '%s' % (categories, template_categories))
+                for c in self.categories:
+                    self.dtypes[c] = pd.core.categorical.CategoricalDtype()
+
+            mkdir(self.dirname('meta', 'categories'))
             self.flush_meta()
             self.save_partitions()
         else:
@@ -85,22 +97,20 @@ class Castra(object):
                 "must specify a 'template' when creating a new Castra")
 
     def load_meta(self, loads=pickle.loads):
-        meta = []
-        for name in ['columns', 'dtypes', 'index_dtype', 'axis_names']:
+        for name in self.meta_fields:
             with open(self.dirname('meta', name), 'rb') as f:
-                meta.append(loads(f.read()))
-        self.columns, self.dtype, self.index_dtype, self.axis_names = meta
+                setattr(self, name, loads(f.read()))
 
     def flush_meta(self, dumps=partial(pickle.dumps, protocol=2)):
-        for name in ['columns', 'dtypes', 'index_dtype', 'axis_names']:
+        for name in self.meta_fields:
             with open(self.dirname('meta', name), 'wb') as f:
                 f.write(dumps(getattr(self, name)))
 
     def load_partitions(self, loads=pickle.loads):
         with open(self.dirname('meta', 'plist'), 'rb') as f:
-            self.partitions = pickle.load(f)
+            self.partitions = loads(f.read())
         with open(self.dirname('meta', 'minimum'), 'rb') as f:
-            self.minimum = pickle.load(f)
+            self.minimum = loads(f.read())
 
     def save_partitions(self, dumps=partial(pickle.dumps, protocol=2)):
         with open(self.dirname('meta', 'minimum'), 'wb') as f:
@@ -139,16 +149,14 @@ class Castra(object):
 
         # Store columns
         for col in df.columns:
-            fn = self.dirname(partition_name, col)
-            x = df[col].values
-            pack_file(x, fn)
+            pack_file(df[col].values, self.dirname(partition_name, col))
 
         # Store index
         fn = self.dirname(partition_name, '.index')
         x = df.index.values
         bloscpack.pack_ndarray_file(x, fn)
 
-        if len(self.partitions) == 0:
+        if not len(self.partitions):
             self.minimum = index.min()
         self.partitions[index.max()] = partition_name
         self.flush()
@@ -161,7 +169,7 @@ class Castra(object):
             columns = list(columns)
         if not isinstance(columns, list):
             df = self.load_partition(name, [columns], categorize=categorize)
-            return df[df.columns[0]]
+            return df.iloc[:, 0]
         arrays = [unpack_file(self.dirname(name, col)) for col in columns]
         index = unpack_file(self.dirname(name, '.index'))
 
