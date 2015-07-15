@@ -2,10 +2,6 @@ sudo: False
 
 language: python
 
-os:
-  - linux
-  - osx
-
 matrix:
   include:
     - python: 2.6
@@ -15,8 +11,7 @@ matrix:
 
 install:
   # Install conda
-  - if [[ $TRAVIS_PYTHON_VERSION == "osx" ]]; then os=MacOSX; else os=Linux; fi
-  - wget http://repo.continuum.io/miniconda/Miniconda-latest-${os}-x86_64.sh -O miniconda.sh
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
   - conda config --set always_yes yes --set changeps1 no
@@ -25,7 +20,8 @@ install:
   # Install dependencies
   - conda create -n castra python=$TRAVIS_PYTHON_VERSION pytest numpy pandas
   - source activate castra
-  - pip install bloscpack
+  - pip install git+git://github.com/Blosc/blosc
+  - pip install git+git://github.com/Blosc/bloscpack
 
 script:
   - py.test -x --doctest-modules --pyargs castra
