@@ -281,3 +281,11 @@ def test_do_not_create_dirs_if_template_fails():
         Castra(template=A, path='foo', categories=['w'])
     assert not os.path.exists(os.path.join('foo', 'meta'))
     assert not os.path.exists(os.path.join('foo', 'meta', 'categories'))
+
+
+def test_sort_on_extend():
+    df = pd.DataFrame({'x': [1, 2, 3]}, index=[3, 2, 1])
+    expected = pd.DataFrame({'x': [3, 2, 1]}, index=[1, 2, 3])
+    with Castra(template=df) as c:
+        c.extend(df)
+        tm.assert_frame_equal(c[:], expected)
