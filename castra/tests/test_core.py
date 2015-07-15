@@ -7,6 +7,8 @@ import shutil
 import pandas as pd
 import pandas.util.testing as tm
 
+import pytest
+
 import numpy as np
 
 import pytest
@@ -257,3 +259,25 @@ def test_same_categories_when_already_categorized():
     with Castra(template=A, categories=['z']) as c:
         c.extend(A)
         assert c.categories['z'] == A.z.cat.categories.tolist()
+
+
+def test_category_dtype():
+    A = pd.DataFrame({'x': [1, 2] * 3,
+                      'y': [1., 2.] * 3,
+                      'z': list('abcabc')},
+                     columns=list('xyz'))
+    with Castra(template=A, categories=['z']) as c:
+        c.extend(A)
+        assert A.dtypes['z'] == 'object'
+        assert c.dtypes['z'] == pd.core.categorical.CategoricalDtype()
+
+
+def test_do_not_create_dirs_if_template_fails():
+    A = pd.DataFrame({'x': [1, 2] * 3,
+                      'y': [1., 2.] * 3,
+                      'z': list('abcabc')},
+                     columns=list('xyz'))
+    with pytest.raises(ValueError):
+        Castra(template=A, path='foo', categories=['w'])
+    assert not os.path.exists(os.path.join('foo', 'meta'))
+    assert not os.path.exists(os.path.join('foo', 'meta', 'categories'))

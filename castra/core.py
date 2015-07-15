@@ -62,8 +62,6 @@ class Castra(object):
 
         # or we don't, in which case we need a template
         elif template is not None:
-            mkdir(self.dirname('meta'))
-            mkdir(self.dirname('meta', 'categories'))
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
             self.axis_names = [template.index.name, template.columns.name]
