@@ -87,45 +87,45 @@ class Castra(object):
     def load_meta(self, loads=pickle.loads):
         meta = []
         for name in ['columns', 'dtypes', 'index_dtype', 'axis_names']:
-            with open(self.dirname('meta', name), 'r') as f:
+            with open(self.dirname('meta', name), 'rb') as f:
                 meta.append(loads(f.read()))
         self.columns, self.dtype, self.index_dtype, self.axis_names = meta
 
     def flush_meta(self, dumps=partial(pickle.dumps, protocol=2)):
         for name in ['columns', 'dtypes', 'index_dtype', 'axis_names']:
-            with open(self.dirname('meta', name), 'w') as f:
+            with open(self.dirname('meta', name), 'wb') as f:
                 f.write(dumps(getattr(self, name)))
 
     def load_partitions(self, loads=pickle.loads):
-        with open(self.dirname('meta', 'plist'), 'r') as f:
+        with open(self.dirname('meta', 'plist'), 'rb') as f:
             self.partitions = pickle.load(f)
-        with open(self.dirname('meta', 'minimum'), 'r') as f:
+        with open(self.dirname('meta', 'minimum'), 'rb') as f:
             self.minimum = pickle.load(f)
 
     def save_partitions(self, dumps=partial(pickle.dumps, protocol=2)):
-        with open(self.dirname('meta', 'minimum'), 'w') as f:
+        with open(self.dirname('meta', 'minimum'), 'wb') as f:
             f.write(dumps(self.minimum))
-        with open(self.dirname('meta', 'plist'), 'w') as f:
+        with open(self.dirname('meta', 'plist'), 'wb') as f:
             f.write(dumps(self.partitions))
 
     def append_categories(self, new, dumps=partial(pickle.dumps, protocol=2)):
-        separator = '-sep-'
+        separator = b'-sep-'
         for col, cat in new.items():
             if cat:
-                with open(self.dirname('meta', 'categories', col), 'a') as f:
+                with open(self.dirname('meta', 'categories', col), 'ab') as f:
                     f.write(separator.join(map(dumps, cat)))
                     f.write(separator)
 
     def load_categories(self, loads=pickle.loads):
-        separator = '-sep-'
+        separator = b'-sep-'
         self.categories = dict()
         for col in self.columns:
             fn = self.dirname('meta', 'categories', col)
             if os.path.exists(fn):
-                with open(fn) as f:
+                with open(fn, 'rb') as f:
                     text = f.read()
-                L = text.split(separator)[:-1]
-                self.categories[col] = list(map(loads, L))
+                self.categories[col] = [loads(x)
+                                        for x in text.split(separator)[:-1]]
 
     def extend(self, df):
         # TODO: Ensure that df is consistent with existing data
@@ -237,7 +237,7 @@ class Castra(object):
             return dd.Series(dsk, name, columns, divisions)
 
 
-def pack_file(x, fn):
+def pack_file(x, fn, encoding='utf8'):
     """ Pack numpy array into filename
 
     Supports binary data with bloscpack and text data with msgpack+blosc
@@ -250,12 +250,12 @@ def pack_file(x, fn):
     if x.dtype != 'O':
         bloscpack.pack_ndarray_file(x, fn)
     else:
-        bytes = blosc.compress(msgpack.packb(x.tolist()), 1)
+        bytes = blosc.compress(msgpack.packb(x.tolist(), encoding=encoding), 1)
         with open(fn, 'wb') as f:
             f.write(bytes)
 
 
-def unpack_file(fn):
+def unpack_file(fn, encoding='utf8'):
     """ Unpack numpy array from filename
 
     Supports binary data with bloscpack and text data with msgpack+blosc
@@ -270,8 +270,8 @@ def unpack_file(fn):
         return bloscpack.unpack_ndarray_file(fn)
     except ValueError:
         with open(fn, 'rb') as f:
-            bytes = f.read()
-        return np.array(msgpack.unpackb(blosc.decompress(bytes)))
+            return np.array(msgpack.unpackb(blosc.decompress(f.read()),
+                                            encoding=encoding))
 
 
 def coerce_index(dt, o):
@@ -287,14 +287,16 @@ def select_partitions(partitions, key):
     >>> select_partitions(p, slice(3, 25))
     ['b', 'c', 'd']
     """
-    assert key.step is None
+    assert key.step is None, 'step must be None but was %s' % key.step
     start, stop = key.start, key.stop
     names = list(partitions.loc[start:stop])
 
     last = partitions.searchsorted(names[-1])[0]
 
     stop2 = coerce_index(partitions.index.dtype, stop)
-    if partitions.index[last] < stop2 and len(partitions) > last + 1:
+    if (stop2 is not None and
+        partitions.index[last] < stop2 and
+            len(partitions) > last + 1):
         names.append(partitions.iloc[last + 1])
 
     return names
