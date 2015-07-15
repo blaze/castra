@@ -1,4 +1,4 @@
 numpy
 pandas
-bloscpack
+bloscpack>=0.8.0
 blosc
