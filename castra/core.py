@@ -297,16 +297,18 @@ def select_partitions(partitions, key):
     """
     assert key.step is None, 'step must be None but was %s' % key.step
     start, stop = key.start, key.stop
-    names = list(partitions.loc[start:stop])
+    if start is not None:
+        start = coerce_index(partitions.index.dtype, start)
+        istart = partitions.index.searchsorted(start)
+    else:
+        istart = 0
+    if stop is not None:
+        stop = coerce_index(partitions.index.dtype, stop)
+        istop = partitions.index.searchsorted(stop)
+    else:
+        istop = len(partitions) - 1
 
-    last = partitions.searchsorted(names[-1])[0]
-
-    stop2 = coerce_index(partitions.index.dtype, stop)
-    if (stop2 is not None and
-        partitions.index[last] < stop2 and
-            len(partitions) > last + 1):
-        names.append(partitions.iloc[last + 1])
-
+    names = partitions.iloc[istart: istop + 1].values.tolist()
     return names
 
 

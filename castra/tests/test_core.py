@@ -1,4 +1,3 @@
-
 import os
 import tempfile
 import pickle
@@ -14,7 +13,7 @@ import numpy as np
 import pytest
 
 from castra import Castra
-from castra.core import mkdir
+from castra.core import mkdir, select_partitions
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -289,3 +288,12 @@ def test_sort_on_extend():
     with Castra(template=df) as c:
         c.extend(df)
         tm.assert_frame_equal(c[:], expected)
+
+
+def test_select_partitions():
+    p = pd.Series(['a', 'b', 'c', 'd', 'e'], index=[0, 10, 20, 30, 40])
+    assert select_partitions(p, slice(3, 25)) == ['b', 'c', 'd']
+    assert select_partitions(p, slice(None, 25)) == ['a', 'b', 'c', 'd']
+    assert select_partitions(p, slice(3, None)) == ['b', 'c', 'd', 'e']
+    assert select_partitions(p, slice(None, None)) == ['a', 'b', 'c', 'd', 'e']
+    assert select_partitions(p, slice(10, 30)) == ['b', 'c', 'd']
