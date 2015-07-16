@@ -23,6 +23,18 @@ import pandas as pd
 from pandas import msgpack
 
 
+bp_args = bloscpack.BloscpackArgs(offsets=False, checksum='None')
+
+def blosc_args(dt):
+    if np.issubdtype(dt, int):
+        return bloscpack.BloscArgs(dt.itemsize, clevel=3, shuffle=True)
+    if np.issubdtype(dt, np.datetime64):
+        return bloscpack.BloscArgs(dt.itemsize, clevel=3, shuffle=True)
+    if np.issubdtype(dt, float):
+        return bloscpack.BloscArgs(dt.itemsize, clevel=1, shuffle=False)
+    return None
+
+
 def escape(text):
     return str(text)
 
@@ -154,7 +166,8 @@ class Castra(object):
         # Store index
         fn = self.dirname(partition_name, '.index')
         x = df.index.values
-        bloscpack.pack_ndarray_file(x, fn)
+        bloscpack.pack_ndarray_file(x, fn, bloscpack_args=bp_args,
+                blosc_args=blosc_args(x.dtype))
 
         if not len(self.partitions):
             self.minimum = index.min()
@@ -259,7 +272,8 @@ def pack_file(x, fn, encoding='utf8'):
         unpack_file
     """
     if x.dtype != 'O':
-        bloscpack.pack_ndarray_file(x, fn)
+        bloscpack.pack_ndarray_file(x, fn, bloscpack_args=bp_args,
+                blosc_args=blosc_args(x.dtype))
     else:
         bytes = blosc.compress(msgpack.packb(x.tolist(), encoding=encoding), 1)
         with open(fn, 'wb') as f:
@@ -300,16 +314,18 @@ def select_partitions(partitions, key):
     """
     assert key.step is None, 'step must be None but was %s' % key.step
     start, stop = key.start, key.stop
-    names = list(partitions.loc[start:stop])
+    if start is not None:
+        start = coerce_index(partitions.index.dtype, start)
+        istart = partitions.index.searchsorted(start)
+    else:
+        istart = 0
+    if stop is not None:
+        stop = coerce_index(partitions.index.dtype, stop)
+        istop = partitions.index.searchsorted(stop)
+    else:
+        istop = len(partitions) - 1
 
-    last = partitions.searchsorted(names[-1])[0]
-
-    stop2 = coerce_index(partitions.index.dtype, stop)
-    if (stop2 is not None and
-        partitions.index[last] < stop2 and
-            len(partitions) > last + 1):
-        names.append(partitions.iloc[last + 1])
-
+    names = partitions.iloc[istart: istop + 1].values.tolist()
     return names
 
 
