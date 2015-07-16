@@ -237,7 +237,7 @@ class Castra(object):
         import dask.dataframe as dd
         name = 'from-castra' + next(dd.core.tokens)
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
-                    for i, part in enumerate(self.partitions.values))
+                   for i, part in enumerate(self.partitions.values))
         divisions = [self.minimum] + list(self.partitions.index)
         if isinstance(columns, list):
             return dd.DataFrame(dsk, name, columns, divisions)
@@ -347,6 +347,19 @@ def _decategorize(categories, df):
     return extra, new_categories, new_df
 
 
+def iscategorical(s):
+    """Check if a Series has categorical dtype.
+
+    Examples
+    --------
+    >>> iscategorical(pd.Series(list('aabacc'), dtype='category'))
+    True
+    >>> iscategorical(pd.Series([1, 2, 3]))
+    False
+    """
+    return str(s.dtype) == 'category'
+
+
 def _categorize(categories, df):
     """ Categorize columns in dataframe
 
@@ -359,17 +372,9 @@ def _categorize(categories, df):
     2  3  A
     """
     if isinstance(df, pd.Series):
-        if df.name in categories:
-            cat = pd.Categorical.from_codes(df.values, categories[df.name])
-            return pd.Series(cat, index=df.index)
-        else:
-            return df
-
+        return make_categorical(df, categories)
     else:
-        return pd.DataFrame(
-                dict((col, pd.Categorical.from_codes(df[col], categories[col])
-                           if col in categories
-                           else df[col])
-                    for col in df.columns),
-                columns=df.columns,
-                index=df.index)
+        return pd.DataFrame(dict((col, make_categorical(df[col], categories))
+                                 for col in df.columns),
+                            columns=df.columns,
+                            index=df.index)
