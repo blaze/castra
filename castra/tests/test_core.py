@@ -297,3 +297,16 @@ def test_select_partitions():
     assert select_partitions(p, slice(3, None)) == ['b', 'c', 'd', 'e']
     assert select_partitions(p, slice(None, None)) == ['a', 'b', 'c', 'd', 'e']
     assert select_partitions(p, slice(10, 30)) == ['b', 'c', 'd']
+
+
+def test_first_index_is_timestamp():
+    df = pd.DataFrame({'x': [1, 2] * 3,
+                       'y': [1., 2.] * 3,
+                       'z': list('abcabc')},
+                      columns=list('xyz'),
+                      index=pd.date_range(start='20120101', periods=6))
+    with Castra(template=df) as c:
+        c.extend(df)
+
+        assert isinstance(c.minimum, pd.Timestamp)
+        assert isinstance(c.to_dask().divisions[0], pd.Timestamp)
