@@ -363,7 +363,16 @@ def iscategorical(s):
     return str(s.dtype) == 'category'
 
 
+def make_categorical(s, categories):
+    if s.name in categories and not iscategorical(s):
         idx = pd.Index(categories[s.name], tupleize_cols=False)
+        idx.is_unique = True
+        cat = pd.Categorical(s.values, categories=idx, fastpath=True)
+        return pd.Series(cat, index=s.index, name=s.name)
+    else:
+        return s
+
+
 def _categorize(categories, df):
     """ Categorize columns in dataframe
 
