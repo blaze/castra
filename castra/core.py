@@ -156,7 +156,8 @@ class Castra(object):
 
         mkdir(self.dirname(partition_name))
 
-        new_categories, self.categories, df = _decategorize(self.categories, df)
+        new_categories, self.categories, df = _decategorize(self.categories,
+                                                            df)
         self.append_categories(new_categories)
 
         # Store columns
@@ -165,13 +166,12 @@ class Castra(object):
 
         # Store index
         fn = self.dirname(partition_name, '.index')
-        x = df.index.values
-        bloscpack.pack_ndarray_file(x, fn, bloscpack_args=bp_args,
-                blosc_args=blosc_args(x.dtype))
+        bloscpack.pack_ndarray_file(index, fn, bloscpack_args=bp_args,
+                                    blosc_args=blosc_args(index.dtype))
 
         if not len(self.partitions):
-            self.minimum = index.min()
-        self.partitions[index.max()] = partition_name
+            self.minimum = df.index.min()
+        self.partitions[df.index.max()] = partition_name
         self.flush()
 
     def dirname(self, *args):
@@ -248,9 +248,11 @@ class Castra(object):
         self.load_categories()
 
     def to_dask(self, columns=None):
+        import dask.dataframe as dd
+
         if columns is None:
             columns = self.columns
-        import dask.dataframe as dd
+
         name = 'from-castra' + next(dd.core.tokens)
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
                    for i, part in enumerate(self.partitions.values))
