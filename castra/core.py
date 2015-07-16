@@ -174,9 +174,12 @@ class Castra(object):
         index = unpack_file(self.dirname(name, '.index'))
 
         df = pd.DataFrame(dict(zip(columns, arrays)),
-                          columns=pd.Index(columns, name=self.axis_names[1]),
-                          index=pd.Index(index, dtype=self.index_dtype,
-                                         name=self.axis_names[0]))
+                          columns=pd.Index(columns, name=self.axis_names[1],
+                                           tupleize_cols=False),
+                          index=pd.Index(index,
+                                         dtype=self.index_dtype,
+                                         name=self.axis_names[0],
+                                         tupleize_cols=False))
         if categorize:
             df = _categorize(self.categories, df)
         return df
@@ -360,6 +363,7 @@ def iscategorical(s):
     return str(s.dtype) == 'category'
 
 
+        idx = pd.Index(categories[s.name], tupleize_cols=False)
 def _categorize(categories, df):
     """ Categorize columns in dataframe
 
