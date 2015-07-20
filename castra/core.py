@@ -170,7 +170,7 @@ class Castra(object):
                 blosc_args=blosc_args(x.dtype))
 
         if not len(self.partitions):
-            self.minimum = index.min()
+            self.minimum = coerce_index(index.dtype, index.min())
         self.partitions[index.max()] = partition_name
         self.flush()
 

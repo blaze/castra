@@ -297,3 +297,11 @@ def test_select_partitions():
     assert select_partitions(p, slice(3, None)) == ['b', 'c', 'd', 'e']
     assert select_partitions(p, slice(None, None)) == ['a', 'b', 'c', 'd', 'e']
     assert select_partitions(p, slice(10, 30)) == ['b', 'c', 'd']
+
+
+def test_minimum_dtype():
+    df = tm.makeTimeDataFrame()
+
+    with Castra(template=df) as c:
+        c.extend(df)
+        assert type(c.minimum) == type(c.partitions.index[0])
