@@ -19,3 +19,6 @@ TODO
 ----
 
 Castra is new and not ready for public use.
+
+.. |Build Status| image:: https://travis-ci.org/Blosc/castra.svg
+   :target: https://travis-ci.org/Blosc/castra
