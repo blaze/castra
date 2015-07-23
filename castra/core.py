@@ -151,6 +151,15 @@ class Castra(object):
         # TODO: Ensure that df is consistent with existing data
         if not df.index.is_monotonic_increasing:
             df = df.sort_index(inplace=False)
+        if len(self.partitions) and df.index[0] < self.partitions.index[0]:
+            if is_trivial_index(df.index):
+                df = df.copy()
+                new_index = pd.Index(range(self.partitions.index[0] + 1,
+                                           self.partitions.index[0] + 1 + len(df)),
+                                    name = df.index.name)
+                df.index = new_index
+            else:
+                raise ValueError("Index of new dataframe less than known data")
         index = df.index.values
         partition_name = '--'.join([escape(index.min()), escape(index.max())])
 
@@ -389,3 +398,17 @@ def _categorize(categories, df):
                     for col in df.columns),
                 columns=df.columns,
                 index=df.index)
+
+
+def is_trivial_index(ind):
+    """ Is this index just 0..n ?
+
+    If so then we can probably ignore or change it around as necessary
+
+    >>> is_trivial_index(pd.Index([0, 1, 2]))
+    True
+
+    >>> is_trivial_index(pd.Index([0, 3, 5]))
+    False
+    """
+    return ind[0] == 0 and (ind == range(len(ind))).all()
