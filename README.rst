@@ -1,7 +1,7 @@
 Castra
 ======
 
-|Build Status| |Coverage| |Doc Status| |Gitter|
+|Build Status|
 
 Castra is an on-disk, partitioned, compressed, column store with a focus on
 time-series applications.  It provides efficient columnar range queries.
@@ -13,12 +13,6 @@ time-series applications.  It provides efficient columnar range queries.
 *  **Tabular and time-series data:**  Castra plays well with Pandas and is an ideal fit for append-only applications like time-series
 
 .. _Blosc: https://github.com/Blosc
-
-
-TODO
-----
-
-Castra is new and not ready for public use.
 
 .. |Build Status| image:: https://travis-ci.org/Blosc/castra.svg
    :target: https://travis-ci.org/Blosc/castra
