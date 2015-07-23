@@ -305,3 +305,25 @@ def test_minimum_dtype():
     with Castra(template=df) as c:
         c.extend(df)
         assert type(c.minimum) == type(c.partitions.index[0])
+
+
+def test_many_default_indexes():
+    a = pd.DataFrame({'x': [1, 2, 3]})
+    b = pd.DataFrame({'x': [4, 5, 6]})
+
+    with Castra(template=a) as c:
+        c.extend(a)
+        c.extend(b)
+
+        assert (c[:, 'x'].values == [1, 2, 3, 4, 5, 6]).all()
+
+
+def test_raise_error_on_mismatched_index():
+    a = pd.DataFrame({'x': [1, 2, 3]}, index=[1, 2, 3])
+    b = pd.DataFrame({'x': [4, 5, 6]}, index=[2, 3, 4])
+
+    with Castra(template=a) as c:
+        c.extend(a)
+
+        with pytest.raises(ValueError):
+            c.extend(b)
