@@ -4,7 +4,7 @@ from os.path import exists
 from setuptools import setup
 
 setup(name='castra',
-      version='0.1.1',
+      version='0.1.2',
       description='On-disk partitioned store',
       url='http://github.com/Blosc/Castra/',
       maintainer='Matthew Rocklin',
