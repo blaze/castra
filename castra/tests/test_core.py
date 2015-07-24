@@ -198,6 +198,8 @@ def test_index_dtype_matches_template():
 
 
 def test_to_dask_dataframe():
+    pytest.importorskip('dask.dataframe')
+
     try:
         import dask.dataframe as dd
     except ImportError:
@@ -300,6 +302,8 @@ def test_select_partitions():
 
 
 def test_first_index_is_timestamp():
+    pytest.importorskip('dask.dataframe')
+
     df = pd.DataFrame({'x': [1, 2] * 3,
                        'y': [1., 2.] * 3,
                        'z': list('abcabc')},
