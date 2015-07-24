@@ -368,24 +368,12 @@ def _decategorize(categories, df):
     return extra, new_categories, new_df
 
 
-def iscategorical(s):
-    """Check if a Series has categorical dtype.
-
-    Examples
-    --------
-    >>> iscategorical(pd.Series(list('aabacc'), dtype='category'))
-    True
-    >>> iscategorical(pd.Series([1, 2, 3]))
-    False
-    """
-    return str(s.dtype) == 'category'
-
-
 def make_categorical(s, categories):
-    if s.name in categories and not iscategorical(s):
-        idx = pd.Index(categories[s.name], tupleize_cols=False)
+    if s.name in categories:
+        idx = pd.Index(categories[s.name], tupleize_cols=False, dtype='object')
         idx.is_unique = True
-        cat = pd.Categorical(s.values, categories=idx, fastpath=True)
+        cat = pd.Categorical(s.values, categories=idx, fastpath=True,
+                             ordered=False)
         return pd.Series(cat, index=s.index, name=s.name)
     else:
         return s
