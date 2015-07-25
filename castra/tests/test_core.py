@@ -310,12 +310,16 @@ def test_minimum_dtype():
 def test_many_default_indexes():
     a = pd.DataFrame({'x': [1, 2, 3]})
     b = pd.DataFrame({'x': [4, 5, 6]})
+    c = pd.DataFrame({'x': [7, 8, 9]})
 
-    with Castra(template=a) as c:
-        c.extend(a)
-        c.extend(b)
+    e = pd.DataFrame({'x': [1, 2, 3, 4, 5, 6, 7, 8, 9]})
 
-        assert (c[:, 'x'].values == [1, 2, 3, 4, 5, 6]).all()
+    with Castra(template=a) as C:
+        C.extend(a)
+        C.extend(b)
+        C.extend(c)
+
+        tm.assert_frame_equal(C[:], e)
 
 
 def test_raise_error_on_mismatched_index():
