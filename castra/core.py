@@ -155,7 +155,7 @@ class Castra(object):
             if is_trivial_index(df.index):
                 df = df.copy()
                 start = self.partitions.index[-1] + 1
-                new_index = pd.Index(range(start, start + len(df)),
+                new_index = pd.Index(np.arange(start, start + len(df)),
                                      name = df.index.name)
                 df.index = new_index
             else:
