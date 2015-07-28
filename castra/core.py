@@ -165,7 +165,8 @@ class Castra(object):
 
         mkdir(self.dirname(partition_name))
 
-        new_categories, self.categories, df = _decategorize(self.categories, df)
+        new_categories, self.categories, df = _decategorize(self.categories,
+                                                            df)
         self.append_categories(new_categories)
 
         # Store columns
@@ -174,9 +175,8 @@ class Castra(object):
 
         # Store index
         fn = self.dirname(partition_name, '.index')
-        x = df.index.values
-        bloscpack.pack_ndarray_file(x, fn, bloscpack_args=bp_args,
-                blosc_args=blosc_args(x.dtype))
+        bloscpack.pack_ndarray_file(index, fn, bloscpack_args=bp_args,
+                                    blosc_args=blosc_args(index.dtype))
 
         if not len(self.partitions):
             self.minimum = coerce_index(index.dtype, index.min())
@@ -196,9 +196,12 @@ class Castra(object):
         index = unpack_file(self.dirname(name, '.index'))
 
         df = pd.DataFrame(dict(zip(columns, arrays)),
-                          columns=pd.Index(columns, name=self.axis_names[1]),
-                          index=pd.Index(index, dtype=self.index_dtype,
-                                         name=self.axis_names[0]))
+                          columns=pd.Index(columns, name=self.axis_names[1],
+                                           tupleize_cols=False),
+                          index=pd.Index(index,
+                                         dtype=self.index_dtype,
+                                         name=self.axis_names[0],
+                                         tupleize_cols=False))
         if categorize:
             df = _categorize(self.categories, df)
         return df
@@ -254,12 +257,14 @@ class Castra(object):
         self.load_categories()
 
     def to_dask(self, columns=None):
+        import dask.dataframe as dd
+
         if columns is None:
             columns = self.columns
-        import dask.dataframe as dd
+
         name = 'from-castra' + next(dd.core.tokens)
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
-                    for i, part in enumerate(self.partitions.values))
+                   for i, part in enumerate(self.partitions.values))
         divisions = [self.minimum] + list(self.partitions.index)
         if isinstance(columns, list):
             return dd.DataFrame(dsk, name, columns, divisions)
@@ -372,6 +377,17 @@ def _decategorize(categories, df):
     return extra, new_categories, new_df
 
 
+def make_categorical(s, categories):
+    if s.name in categories:
+        idx = pd.Index(categories[s.name], tupleize_cols=False, dtype='object')
+        idx.is_unique = True
+        cat = pd.Categorical(s.values, categories=idx, fastpath=True,
+                             ordered=False)
+        return pd.Series(cat, index=s.index, name=s.name)
+    else:
+        return s
+
+
 def _categorize(categories, df):
     """ Categorize columns in dataframe
 
@@ -384,20 +400,12 @@ def _categorize(categories, df):
     2  3  A
     """
     if isinstance(df, pd.Series):
-        if df.name in categories:
-            cat = pd.Categorical.from_codes(df.values, categories[df.name])
-            return pd.Series(cat, index=df.index)
-        else:
-            return df
-
+        return make_categorical(df, categories)
     else:
-        return pd.DataFrame(
-                dict((col, pd.Categorical.from_codes(df[col], categories[col])
-                           if col in categories
-                           else df[col])
-                    for col in df.columns),
-                columns=df.columns,
-                index=df.index)
+        return pd.DataFrame(dict((col, make_categorical(df[col], categories))
+                                 for col in df.columns),
+                            columns=df.columns,
+                            index=df.index)
 
 
 def is_trivial_index(ind):
@@ -411,4 +419,4 @@ def is_trivial_index(ind):
     >>> is_trivial_index(pd.Index([0, 3, 5]))
     False
     """
-    return ind[0] == 0 and (ind == range(len(ind))).all()
+    return ind[0] == 0 and (ind == np.arange(len(ind))).all()

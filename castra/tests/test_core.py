@@ -198,6 +198,8 @@ def test_index_dtype_matches_template():
 
 
 def test_to_dask_dataframe():
+    pytest.importorskip('dask.dataframe')
+
     try:
         import dask.dataframe as dd
     except ImportError:
@@ -297,6 +299,21 @@ def test_select_partitions():
     assert select_partitions(p, slice(3, None)) == ['b', 'c', 'd', 'e']
     assert select_partitions(p, slice(None, None)) == ['a', 'b', 'c', 'd', 'e']
     assert select_partitions(p, slice(10, 30)) == ['b', 'c', 'd']
+
+
+def test_first_index_is_timestamp():
+    pytest.importorskip('dask.dataframe')
+
+    df = pd.DataFrame({'x': [1, 2] * 3,
+                       'y': [1., 2.] * 3,
+                       'z': list('abcabc')},
+                      columns=list('xyz'),
+                      index=pd.date_range(start='20120101', periods=6))
+    with Castra(template=df) as c:
+        c.extend(df)
+
+        assert isinstance(c.minimum, pd.Timestamp)
+        assert isinstance(c.to_dask().divisions[0], pd.Timestamp)
 
 
 def test_minimum_dtype():

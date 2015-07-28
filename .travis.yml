@@ -18,7 +18,7 @@ install:
   - conda update conda
 
   # Install dependencies
-  - conda create -n castra python=$TRAVIS_PYTHON_VERSION pytest numpy pandas
+  - conda create -n castra python=$TRAVIS_PYTHON_VERSION pytest numpy pandas dask
   - source activate castra
   - pip install blosc
   - pip install bloscpack
