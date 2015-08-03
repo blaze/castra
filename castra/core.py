@@ -11,6 +11,7 @@ except ImportError:
 
 import shutil
 import tempfile
+from hashlib import md5
 
 from functools import partial
 
@@ -262,7 +263,8 @@ class Castra(object):
         if columns is None:
             columns = self.columns
 
-        name = 'from-castra' + next(dd.core.tokens)
+        token = md5(str((self.path, os.path.getmtime(self.path))).encode()).hexdigest()
+        name = 'from-castra-' + token
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
                    for i, part in enumerate(self.partitions.values))
         divisions = [self.minimum] + list(self.partitions.index)
