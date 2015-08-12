@@ -372,7 +372,10 @@ def _decategorize(categories, df):
     for col, cat in categories.items():
         idx = pd.Index(df[col])
         idx = getattr(idx, 'categories', idx)
-        extra[col] = idx[~idx.isin(cat)].unique().tolist()
+        ex = idx[~idx.isin(cat)].unique()
+        if any(pd.isnull(c) for c in cat):
+            ex = ex[~pd.isnull(ex)]
+        extra[col] = ex.tolist()
         new_categories[col] = cat + extra[col]
         new_columns[col] = pd.Categorical(df[col], new_categories[col]).codes
     new_df = pd.DataFrame(new_columns, columns=df.columns, index=df.index)

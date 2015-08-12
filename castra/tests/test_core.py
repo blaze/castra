@@ -348,3 +348,13 @@ def test_raise_error_on_mismatched_index():
 
         with pytest.raises(ValueError):
             c.extend(b)
+
+
+def test_categories_nan():
+    a = pd.DataFrame({'x': ['A', np.nan]})
+    b = pd.DataFrame({'x': ['B', np.nan]})
+
+    with Castra(template=a, categories=['x']) as c:
+        c.extend(a)
+        c.extend(b)
+        assert len(c.categories['x']) == 3
