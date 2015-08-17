@@ -308,8 +308,9 @@ def unpack_file(fn, encoding='utf8'):
         return bloscpack.unpack_ndarray_file(fn)
     except ValueError:
         with open(fn, 'rb') as f:
-            return np.array(msgpack.unpackb(blosc.decompress(f.read()),
-                                            encoding=encoding))
+            data = msgpack.unpackb(blosc.decompress(f.read()),
+                                   encoding=encoding)
+            return np.array(data, object, copy=False)
 
 
 def coerce_index(dt, o):
