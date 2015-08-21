@@ -6,7 +6,7 @@ from setuptools import setup
 setup(name='castra',
       version='0.1.3',
       description='On-disk partitioned store',
-      url='http://github.com/Blosc/Castra/',
+      url='http://github.com/blaze/Castra/',
       maintainer='Matthew Rocklin',
       maintainer_email='mrocklin@gmail.com',
       license='BSD',
