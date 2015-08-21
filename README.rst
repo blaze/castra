@@ -14,5 +14,5 @@ Castra provides efficient columnar range queries.
 
 .. _Blosc: https://github.com/Blosc
 
-.. |Build Status| image:: https://travis-ci.org/Blosc/castra.svg
-   :target: https://travis-ci.org/Blosc/castra
+.. |Build Status| image:: https://travis-ci.org/blaze/castra.svg
+   :target: https://travis-ci.org/blaze/castra
