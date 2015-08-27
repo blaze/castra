@@ -138,6 +138,10 @@ Alternatively, Castra can categorize your data as it receives it
 
    >>> c = Castra('data.castra', template=df, categories=True) # all object dtype columns
 
+Categorizingg columns that have repetitive text, like ``'sex'`` or
+``'ticker-symbol'`` can greatly improve both read times and computational
+performance with Pandas.  See this blogpost_ for more information.
+
 
 Dask dataframe
 --------------
@@ -164,6 +168,8 @@ data with some other system.
 .. _Blosc: https://github.com/Blosc
 
 .. _dask.dataframe: https://dask.pydata.org/en/latest/dataframe.html
+
+.. _blogpost: http://matthewrocklin.com/blog/work/2015/06/18/Categoricals/
 
 .. |Build Status| image:: https://travis-ci.org/blaze/castra.svg
    :target: https://travis-ci.org/blaze/castra
