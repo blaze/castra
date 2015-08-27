@@ -208,6 +208,8 @@ class Castra(object):
             raise ValueError("Invalid 'freq': {0}".format(repr(freq)))
         seq = iter(seq)
         buf = next(seq, None)
+        if not buf.index.is_monotonic_increasing:
+            buf = buf.sort_index(inplace=False)
         for df in seq:
             write, buf = partitioner(buf, df)
             for frame in write:
@@ -455,13 +457,15 @@ def partitionby_none(buf, new):
     """Repartition to ensure partitions don't split duplicate indices"""
     if new.empty:
         return [], buf
-    else:
-        end = buf.index[-1]
-        if end == new.index[0]:
-            i = new.index.searchsorted(end, side='right')
-            buf = pd.concat([buf, new.iloc[:i]])
-            new = new.iloc[i:]
-        return [buf], new
+    if not new.index.is_monotonic_increasing:
+        new = new.sort_index(inplace=False)
+    end = buf.index[-1]
+    if end >= new.index[0] and not is_trivial_index(new.index):
+        i = new.index.searchsorted(end, side='right')
+        # Only need to concat, `castra.extend` will resort if needed
+        buf = pd.concat([buf, new.iloc[:i]])
+        new = new.iloc[i:]
+    return [buf], new
 
 
 def partitionby_grouper(grouper, buf, new):

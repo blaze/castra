@@ -423,3 +423,24 @@ def test_extend_sequence_none():
         assert len(c.load_partition('1--5', ['a', 'b']).index) == 8
         assert len(c.load_partition('6--7', ['a', 'b']).index) == 3
         assert len(c.load_partition('9--12', ['a', 'b']).index) == 4
+
+
+def test_extend_sequence_overlap():
+    df = pd.util.testing.makeTimeDataFrame(20, 'min')
+    p1 = df.iloc[:15]
+    p2 = df.iloc[10:20]
+    seq = [p1,p2]
+    df = pd.concat(seq)
+    with Castra(template=df) as c:
+        c.extend_sequence(seq)
+        tm.assert_frame_equal(c[:], df.sort_index())
+        assert (c.partitions.index == [p.index[-1] for p in seq]).all()
+    # Check with trivial index
+    p1 = pd.DataFrame({'a': range(10), 'b': range(10)})
+    p2 = pd.DataFrame({'a': range(10, 17), 'b': range(10, 17)})
+    seq = [p1,p2]
+    df = pd.DataFrame({'a': range(17), 'b': range(17)})
+    with Castra(template=df) as c:
+        c.extend_sequence(seq)
+        tm.assert_frame_equal(c[:], df)
+        assert (c.partitions.index == [9, 16]).all()
