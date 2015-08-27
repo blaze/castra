@@ -141,7 +141,7 @@ def test_context_manager_with_specific_dir(base):
 def test_timeseries():
     indices = [pd.DatetimeIndex(start=str(i), end=str(i+1), freq='w')
                for i in range(2000, 2015)]
-    dfs = [pd.DataFrame({'x': list(range(len(ind)))}, ind)
+    dfs = [pd.DataFrame({'x': list(range(len(ind)))}, ind).iloc[:-1]
            for ind in indices]
 
     with Castra(template=dfs[0]) as c:
@@ -362,14 +362,16 @@ def test_many_default_indexes():
 
 
 def test_raise_error_on_mismatched_index():
-    a = pd.DataFrame({'x': [1, 2, 3]}, index=[1, 2, 3])
-    b = pd.DataFrame({'x': [4, 5, 6]}, index=[2, 3, 4])
+    x = pd.DataFrame({'x': [1, 2, 3]}, index=[1, 2, 3])
+    y = pd.DataFrame({'x': [1, 2, 3]}, index=[4, 5, 6])
+    z = pd.DataFrame({'x': [4, 5, 6]}, index=[5, 6, 7])
 
-    with Castra(template=a) as c:
-        c.extend(a)
+    with Castra(template=x) as c:
+        c.extend(x)
+        c.extend(y)
 
         with pytest.raises(ValueError):
-            c.extend(b)
+            c.extend(z)
 
 
 def test_raise_error_on_equal_index():
