@@ -216,6 +216,9 @@ class Castra(object):
             key, columns = key
         else:
             columns = self.columns
+        if isinstance(columns, slice):
+            columns = self.columns[columns]
+
         start, stop = key.start, key.stop
         names = select_partitions(self.partitions, key)
 

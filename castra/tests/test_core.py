@@ -82,6 +82,14 @@ def test_get_empty_result(base):
     assert (df.columns == A.columns).all()
 
 
+def test_get_slice(base):
+    c = Castra(path=base, template=A)
+    c.extend(A)
+
+    tm.assert_frame_equal(c[:], c[:, :])
+    tm.assert_frame_equal(c[:, 1:], c[:][['y']])
+
+
 def test_exception_with_non_dir(base):
     file_ = os.path.join(base, 'file')
     with open(file_, 'w') as f:
