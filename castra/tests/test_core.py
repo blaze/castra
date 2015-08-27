@@ -399,7 +399,9 @@ def test_extend_sequence_freq():
     with Castra(template=df) as c:
         c.extend_sequence(seq, freq='h')
         tm.assert_frame_equal(c[:], df)
-        assert len(c.partitions) == 17
+        parts = pd.date_range(start=df.index[59], freq='h',
+                              periods=16).insert(17, df.index[-1])
+        tm.assert_index_equal(c.partitions.index, parts)
 
     with Castra(template=df) as c:
         c.extend_sequence(seq, freq='d')
