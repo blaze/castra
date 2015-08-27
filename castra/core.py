@@ -107,6 +107,10 @@ class Castra(object):
             raise ValueError(
                 "must specify a 'template' when creating a new Castra")
 
+    def _empty_dataframe(self):
+        return pd.DataFrame([],
+                        columns=pd.Index(self.columns, name=self.axis_names[1]),
+                        index=pd.Index([], name=self.axis_names[0]))
     def load_meta(self, loads=pickle.loads):
         for name in self.meta_fields:
             with open(self.dirname('meta', name), 'rb') as f:
@@ -214,6 +218,9 @@ class Castra(object):
             columns = self.columns
         start, stop = key.start, key.stop
         names = select_partitions(self.partitions, key)
+
+        if not names:
+            return self._empty_dataframe()[columns]
 
         data_frames = [self.load_partition(name, columns, categorize=False)
                        for name in names]

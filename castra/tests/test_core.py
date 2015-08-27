@@ -68,6 +68,20 @@ def test_create_with_existing_path(base):
     Castra(path=base, template=A)
 
 
+def test_get_empty(base):
+    df = Castra(path=base, template=A)[:]
+    assert (df.columns == A.columns).all()
+
+
+def test_get_empty_result(base):
+    c = Castra(path=base, template=A)
+    c.extend(A)
+
+    df = c[100:200]
+
+    assert (df.columns == A.columns).all()
+
+
 def test_exception_with_non_dir(base):
     file_ = os.path.join(base, 'file')
     with open(file_, 'w') as f:
