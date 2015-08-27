@@ -372,6 +372,17 @@ def test_raise_error_on_mismatched_index():
             c.extend(b)
 
 
+def test_raise_error_on_equal_index():
+    a = pd.DataFrame({'x': [1, 2, 3]}, index=[1, 2, 3])
+    b = pd.DataFrame({'x': [4, 5, 6]}, index=[3, 4, 5])
+
+    with Castra(template=a) as c:
+        c.extend(a)
+
+        with pytest.raises(ValueError):
+            c.extend(b)
+
+
 def test_categories_nan():
     a = pd.DataFrame({'x': ['A', np.nan]})
     b = pd.DataFrame({'x': ['B', np.nan]})

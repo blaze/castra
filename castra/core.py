@@ -156,7 +156,7 @@ class Castra(object):
         # TODO: Ensure that df is consistent with existing data
         if not df.index.is_monotonic_increasing:
             df = df.sort_index(inplace=False)
-        if len(self.partitions) and df.index[0] < self.partitions.index[0]:
+        if len(self.partitions) and df.index[0] <= self.partitions.index[0]:
             if is_trivial_index(df.index):
                 df = df.copy()
                 start = self.partitions.index[-1] + 1
