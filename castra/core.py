@@ -188,6 +188,33 @@ class Castra(object):
         self.partitions[index.max()] = partition_name
         self.flush()
 
+    def extend_sequence(self, seq, freq=None):
+        """Add dataframes from an iterable, optionally repartitioning by freq.
+
+        Parameters
+        ----------
+        seq : iterable
+            An iterable of dataframes
+        freq : frequency, optional
+            A pandas datetime offset. If provided, the dataframes will be
+            partitioned by this frequency.
+        """
+        if isinstance(freq, str):
+            grouper = pd.TimeGrouper(freq)
+            partitioner = lambda buf, df: partitionby_grouper(grouper, buf, df)
+        elif freq is None:
+            partitioner = partitionby_none
+        else:
+            raise ValueError("Invalid 'freq': {0}".format(repr(freq)))
+        seq = iter(seq)
+        buf = next(seq, None)
+        for df in seq:
+            write, buf = partitioner(buf, df)
+            for frame in write:
+                self.extend(frame)
+        if buf is not None and not buf.empty:
+            self.extend(buf)
+
     def dirname(self, *args):
         return os.path.join(self.path, *args)
 
@@ -422,6 +449,27 @@ def _categorize(categories, df):
                                  for col in df.columns),
                             columns=df.columns,
                             index=df.index)
+
+
+def partitionby_none(buf, new):
+    """Repartition to ensure partitions don't split duplicate indices"""
+    if new.empty:
+        return [], buf
+    else:
+        end = buf.index[-1]
+        if end == new.index[0]:
+            i = new.index.searchsorted(end, side='right')
+            buf = pd.concat([buf, new.iloc[:i]])
+            new = new.iloc[i:]
+        return [buf], new
+
+
+def partitionby_grouper(grouper, buf, new):
+    """Partition frames into blocks by a grouper"""
+    df = pd.concat([buf, new])
+    g = df.groupby(grouper)
+    frames = [g.get_group(i) for i in sorted(g.groups)]
+    return frames[:-1], frames[-1]
 
 
 def is_trivial_index(ind):
