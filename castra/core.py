@@ -68,7 +68,8 @@ class Castra(object):
         if isdir(self.dirname('meta')):
             if template is not None:
                 raise ValueError(
-                    "'template' must be 'None' when opening a Castra")
+                    "Opening a castra with a template, yet this castra\n"
+                    "already exists.  Filename: %s" % self.path)
             self.load_meta()
             self.load_partitions()
             self.load_categories()
