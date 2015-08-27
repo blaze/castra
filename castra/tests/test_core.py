@@ -10,8 +10,6 @@ import pytest
 
 import numpy as np
 
-import pytest
-
 from castra import Castra
 from castra.core import mkdir, select_partitions
 
@@ -393,3 +391,56 @@ def test_categories_nan():
         c.extend(a)
         c.extend(b)
         assert len(c.categories['x']) == 3
+
+
+def test_extend_sequence_freq():
+    df = pd.util.testing.makeTimeDataFrame(1000, 'min')
+    seq = [df.iloc[i:i+100] for i in range(0,1000,100)]
+    with Castra(template=df) as c:
+        c.extend_sequence(seq, freq='h')
+        tm.assert_frame_equal(c[:], df)
+        parts = pd.date_range(start=df.index[59], freq='h',
+                              periods=16).insert(17, df.index[-1])
+        tm.assert_index_equal(c.partitions.index, parts)
+
+    with Castra(template=df) as c:
+        c.extend_sequence(seq, freq='d')
+        tm.assert_frame_equal(c[:], df)
+        assert len(c.partitions) == 1
+
+
+def test_extend_sequence_none():
+    data = {'a': range(5), 'b': range(5)}
+    p1 = pd.DataFrame(data, index=[1, 2, 3, 4, 5])
+    p2 = pd.DataFrame(data, index=[5, 5, 5, 6, 7])
+    p3 = pd.DataFrame(data, index=[7, 9, 10, 11, 12])
+    seq = [p1, p2, p3]
+    df = pd.concat(seq)
+    with Castra(template=df) as c:
+        c.extend_sequence(seq)
+        tm.assert_frame_equal(c[:], df)
+        assert len(c.partitions) == 3
+        assert len(c.load_partition('1--5', ['a', 'b']).index) == 8
+        assert len(c.load_partition('6--7', ['a', 'b']).index) == 3
+        assert len(c.load_partition('9--12', ['a', 'b']).index) == 4
+
+
+def test_extend_sequence_overlap():
+    df = pd.util.testing.makeTimeDataFrame(20, 'min')
+    p1 = df.iloc[:15]
+    p2 = df.iloc[10:20]
+    seq = [p1,p2]
+    df = pd.concat(seq)
+    with Castra(template=df) as c:
+        c.extend_sequence(seq)
+        tm.assert_frame_equal(c[:], df.sort_index())
+        assert (c.partitions.index == [p.index[-1] for p in seq]).all()
+    # Check with trivial index
+    p1 = pd.DataFrame({'a': range(10), 'b': range(10)})
+    p2 = pd.DataFrame({'a': range(10, 17), 'b': range(10, 17)})
+    seq = [p1,p2]
+    df = pd.DataFrame({'a': range(17), 'b': range(17)})
+    with Castra(template=df) as c:
+        c.extend_sequence(seq)
+        tm.assert_frame_equal(c[:], df)
+        assert (c.partitions.index == [9, 16]).all()
