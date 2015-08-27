@@ -68,6 +68,28 @@ def test_create_with_existing_path(base):
     Castra(path=base, template=A)
 
 
+def test_get_empty(base):
+    df = Castra(path=base, template=A)[:]
+    assert (df.columns == A.columns).all()
+
+
+def test_get_empty_result(base):
+    c = Castra(path=base, template=A)
+    c.extend(A)
+
+    df = c[100:200]
+
+    assert (df.columns == A.columns).all()
+
+
+def test_get_slice(base):
+    c = Castra(path=base, template=A)
+    c.extend(A)
+
+    tm.assert_frame_equal(c[:], c[:, :])
+    tm.assert_frame_equal(c[:, 1:], c[:][['y']])
+
+
 def test_exception_with_non_dir(base):
     file_ = os.path.join(base, 'file')
     with open(file_, 'w') as f:
@@ -119,7 +141,7 @@ def test_context_manager_with_specific_dir(base):
 def test_timeseries():
     indices = [pd.DatetimeIndex(start=str(i), end=str(i+1), freq='w')
                for i in range(2000, 2015)]
-    dfs = [pd.DataFrame({'x': list(range(len(ind)))}, ind)
+    dfs = [pd.DataFrame({'x': list(range(len(ind)))}, ind).iloc[:-1]
            for ind in indices]
 
     with Castra(template=dfs[0]) as c:
@@ -340,8 +362,21 @@ def test_many_default_indexes():
 
 
 def test_raise_error_on_mismatched_index():
+    x = pd.DataFrame({'x': [1, 2, 3]}, index=[1, 2, 3])
+    y = pd.DataFrame({'x': [1, 2, 3]}, index=[4, 5, 6])
+    z = pd.DataFrame({'x': [4, 5, 6]}, index=[5, 6, 7])
+
+    with Castra(template=x) as c:
+        c.extend(x)
+        c.extend(y)
+
+        with pytest.raises(ValueError):
+            c.extend(z)
+
+
+def test_raise_error_on_equal_index():
     a = pd.DataFrame({'x': [1, 2, 3]}, index=[1, 2, 3])
-    b = pd.DataFrame({'x': [4, 5, 6]}, index=[2, 3, 4])
+    b = pd.DataFrame({'x': [4, 5, 6]}, index=[3, 4, 5])
 
     with Castra(template=a) as c:
         c.extend(a)

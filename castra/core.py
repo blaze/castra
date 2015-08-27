@@ -107,6 +107,10 @@ class Castra(object):
             raise ValueError(
                 "must specify a 'template' when creating a new Castra")
 
+    def _empty_dataframe(self):
+        return pd.DataFrame([],
+                        columns=pd.Index(self.columns, name=self.axis_names[1]),
+                        index=pd.Index([], name=self.axis_names[0]))
     def load_meta(self, loads=pickle.loads):
         for name in self.meta_fields:
             with open(self.dirname('meta', name), 'rb') as f:
@@ -152,7 +156,7 @@ class Castra(object):
         # TODO: Ensure that df is consistent with existing data
         if not df.index.is_monotonic_increasing:
             df = df.sort_index(inplace=False)
-        if len(self.partitions) and df.index[0] < self.partitions.index[0]:
+        if len(self.partitions) and df.index[0] <= self.partitions.index[-1]:
             if is_trivial_index(df.index):
                 df = df.copy()
                 start = self.partitions.index[-1] + 1
@@ -212,8 +216,14 @@ class Castra(object):
             key, columns = key
         else:
             columns = self.columns
+        if isinstance(columns, slice):
+            columns = self.columns[columns]
+
         start, stop = key.start, key.stop
         names = select_partitions(self.partitions, key)
+
+        if not names:
+            return self._empty_dataframe()[columns]
 
         data_frames = [self.load_partition(name, columns, categorize=False)
                        for name in names]
