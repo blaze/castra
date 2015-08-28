@@ -124,7 +124,7 @@ Text and Categoricals
 ---------------------
 
 Castra tries to encode text and object dtype columns with
-[`msgpack`](http://msgpack.org/index.html), using the implementation found in
+msgpack_, using the implementation found in
 the Pandas library.  It falls back to `pickle` with a high protocol if that
 fails.
 
@@ -141,6 +141,8 @@ Alternatively, Castra can categorize your data as it receives it
 Categorizingg columns that have repetitive text, like ``'sex'`` or
 ``'ticker-symbol'`` can greatly improve both read times and computational
 performance with Pandas.  See this blogpost_ for more information.
+
+.. _msgpack: http://msgpack.org/index.html
 
 
 Dask dataframe
