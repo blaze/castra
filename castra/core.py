@@ -36,8 +36,13 @@ def blosc_args(dt):
     return None
 
 
+replacements = {'.': '-dot', '/': '-slash-', '\\': '-backslash-', ' ': ''}
+
 def escape(text):
-    return str(text)
+    text = str(text)
+    for k, v in replacements.items():
+        text = text.replace(k, v)
+    return text
 
 
 def mkdir(path):
@@ -219,7 +224,7 @@ class Castra(object):
             self.extend(buf)
 
     def dirname(self, *args):
-        return os.path.join(self.path, *args)
+        return os.path.join(self.path, *map(escape, args))
 
     def load_partition(self, name, columns, categorize=True):
         if isinstance(columns, Iterator):

@@ -444,3 +444,12 @@ def test_extend_sequence_overlap():
         c.extend_sequence(seq)
         tm.assert_frame_equal(c[:], df)
         assert (c.partitions.index == [9, 16]).all()
+
+def test_column_with_period():
+    df = pd.DataFrame({'x': [10, 20],
+                       '.': [10., 20.]},
+                       columns=['x', '.'],
+                       index=[10, 20])
+
+    with Castra(template=df) as c:
+        c.extend(df)
