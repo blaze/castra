@@ -201,8 +201,8 @@ class Castra(object):
             partitioned by this frequency.
         """
         if isinstance(freq, str):
-            grouper = pd.TimeGrouper(freq)
-            partitioner = lambda buf, df: partitionby_grouper(grouper, buf, df)
+            freq = pd.datetools.to_offset(freq)
+            partitioner = lambda buf, df: partitionby_freq(freq, buf, df)
         elif freq is None:
             partitioner = partitionby_none
         else:
@@ -469,11 +469,18 @@ def partitionby_none(buf, new):
     return [buf], new
 
 
-def partitionby_grouper(grouper, buf, new):
-    """Partition frames into blocks by a grouper"""
+def partitionby_freq(freq, buf, new):
+    """Partition frames into blocks by a freq"""
     df = pd.concat([buf, new])
-    g = df.groupby(grouper)
-    frames = [g.get_group(i) for i in sorted(g.groups)]
+    if not df.index.is_monotonic_increasing:
+        df = df.sort_index(inplace=False)
+    start, end = pd.tseries.resample._get_range_edges(df.index[0],
+                                                      df.index[-1], freq)
+    inds = [df.index.searchsorted(i) for i in
+            pd.date_range(start, end, freq=freq)[1:]]
+    slices = [(inds[i-1], inds[i]) if i else (0, inds[i]) for i in
+              range(len(inds))]
+    frames = [df.iloc[i:j] for (i, j) in slices]
     return frames[:-1], frames[-1]
 
 
