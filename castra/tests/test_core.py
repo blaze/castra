@@ -212,6 +212,31 @@ def test_reload():
         shutil.rmtree(path)
 
 
+def test_readonly():
+    path = tempfile.mkdtemp(prefix='castra-')
+    try:
+        c = Castra(path=path, template=A)
+        c.extend(A)
+        d = Castra(path=path, readonly=True)
+        with pytest.raises(IOError):
+            d.extend(B)
+        with pytest.raises(IOError):
+            d.extend_sequence([B])
+        with pytest.raises(IOError):
+            d.flush()
+        with pytest.raises(IOError):
+            d.drop()
+        with pytest.raises(IOError):
+            d.save_partitions()
+        with pytest.raises(IOError):
+            d.flush_meta()
+        assert c.columns == d.columns
+        assert (c.partitions == d.partitions).all()
+        assert c.minimum == d.minimum
+    finally:
+        shutil.rmtree(path)
+
+
 def test_index_dtype_matches_template():
     with Castra(template=A) as c:
         assert c.partitions.index.dtype == A.index.dtype
