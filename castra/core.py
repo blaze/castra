@@ -48,7 +48,8 @@ def mkdir(path):
 class Castra(object):
     meta_fields = ['columns', 'dtypes', 'index_dtype', 'axis_names']
 
-    def __init__(self, path=None, template=None, categories=None):
+    def __init__(self, path=None, template=None, categories=None, readonly=False):
+        self._readonly = readonly
         # check if we should create a random path
         self._explicitly_given_path = path is not None
 
@@ -76,6 +77,8 @@ class Castra(object):
 
         # or we don't, in which case we need a template
         elif template is not None:
+            if self._readonly:
+                ValueError("Can't create new castra in readonly mode")
             self.columns, self.dtypes, self.index_dtype = \
                 list(template.columns), template.dtypes, template.index.dtype
             self.axis_names = [template.index.name, template.columns.name]
@@ -112,12 +115,15 @@ class Castra(object):
         return pd.DataFrame([],
                         columns=pd.Index(self.columns, name=self.axis_names[1]),
                         index=pd.Index([], name=self.axis_names[0]))
+
     def load_meta(self, loads=pickle.loads):
         for name in self.meta_fields:
             with open(self.dirname('meta', name), 'rb') as f:
                 setattr(self, name, loads(f.read()))
 
     def flush_meta(self, dumps=partial(pickle.dumps, protocol=2)):
+        if self._readonly:
+            raise IOError('File not open for writing')
         for name in self.meta_fields:
             with open(self.dirname('meta', name), 'wb') as f:
                 f.write(dumps(getattr(self, name)))
@@ -129,12 +135,16 @@ class Castra(object):
             self.minimum = loads(f.read())
 
     def save_partitions(self, dumps=partial(pickle.dumps, protocol=2)):
+        if self._readonly:
+            raise IOError('File not open for writing')
         with open(self.dirname('meta', 'minimum'), 'wb') as f:
             f.write(dumps(self.minimum))
         with open(self.dirname('meta', 'plist'), 'wb') as f:
             f.write(dumps(self.partitions))
 
     def append_categories(self, new, dumps=partial(pickle.dumps, protocol=2)):
+        if self._readonly:
+            raise IOError('File not open for writing')
         separator = b'-sep-'
         for col, cat in new.items():
             if cat:
@@ -154,6 +164,8 @@ class Castra(object):
                                         for x in text.split(separator)[:-1]]
 
     def extend(self, df):
+        if self._readonly:
+            raise IOError('File not open for writing')
         # TODO: Ensure that df is consistent with existing data
         if not df.index.is_monotonic_increasing:
             df = df.sort_index(inplace=False)
@@ -200,6 +212,8 @@ class Castra(object):
             A pandas datetime offset. If provided, the dataframes will be
             partitioned by this frequency.
         """
+        if self._readonly:
+            raise IOError('File not open for writing')
         if isinstance(freq, str):
             freq = pd.datetools.to_offset(freq)
             partitioner = lambda buf, df: partitionby_freq(freq, buf, df)
@@ -265,10 +279,14 @@ class Castra(object):
         return df
 
     def drop(self):
+        if self._readonly:
+            raise IOError('File not open for writing')
         if os.path.exists(self.path):
             shutil.rmtree(self.path)
 
     def flush(self):
+        if self._readonly:
+            raise IOError('File not open for writing')
         self.save_partitions()
 
     def __enter__(self):
@@ -277,17 +295,14 @@ class Castra(object):
     def __exit__(self, *args):
         if not self._explicitly_given_path:
             self.drop()
-        else:
+        elif not self._readonly:
             self.flush()
 
-    def __del__(self):
-        if not self._explicitly_given_path:
-            self.drop()
-        else:
-            self.flush()
+    __del__ = __exit__
 
     def __getstate__(self):
-        self.flush()
+        if not self._readonly:
+            self.flush()
         return (self.path, self._explicitly_given_path)
 
     def __setstate__(self, state):
