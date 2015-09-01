@@ -303,11 +303,12 @@ class Castra(object):
     def __getstate__(self):
         if not self._readonly:
             self.flush()
-        return (self.path, self._explicitly_given_path)
+        return (self.path, self._explicitly_given_path, self._readonly)
 
     def __setstate__(self, state):
         self.path = state[0]
         self._explicitly_given_path = state[1]
+        self._readonly = state[2]
         self.load_meta()
         self.load_partitions()
         self.load_categories()
