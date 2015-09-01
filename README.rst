@@ -138,7 +138,7 @@ Alternatively, Castra can categorize your data as it receives it
 
    >>> c = Castra('data.castra', template=df, categories=True) # all object dtype columns
 
-Categorizingg columns that have repetitive text, like ``'sex'`` or
+Categorizing columns that have repetitive text, like ``'sex'`` or
 ``'ticker-symbol'`` can greatly improve both read times and computational
 performance with Pandas.  See this blogpost_ for more information.
 
