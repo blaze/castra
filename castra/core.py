@@ -51,7 +51,7 @@ def escape(text):
     """
     result = ''.join(c for c in str(text) if c in valid_chars)
     if not result:
-        result = md5(str(text)).hexdigest()
+        result = md5(str(text).encode()).hexdigest()
     return result
 
 
@@ -234,7 +234,7 @@ class Castra(object):
             self.extend(buf)
 
     def dirname(self, *args):
-        return os.path.join(self.path, *map(escape, args))
+        return os.path.join(self.path, *list(map(escape, args)))
 
     def load_partition(self, name, columns, categorize=True):
         if isinstance(columns, Iterator):
