@@ -36,8 +36,23 @@ def blosc_args(dt):
     return None
 
 
+# http://stackoverflow.com/questions/295135/turn-a-string-into-a-valid-filename-in-python
+import string
+valid_chars = "-_%s%s" % (string.ascii_letters, string.digits)
+
 def escape(text):
-    return str(text)
+    """
+
+    >>> escape("Hello!")  # Remove punctuation from names
+    'Hello'
+
+    >>> escape("/!.")  # completely invalid names produce hash string
+    'cb6698330c63e87fc35933a0474238b0'
+    """
+    result = ''.join(c for c in str(text) if c in valid_chars)
+    if not result:
+        result = md5(str(text).encode()).hexdigest()
+    return result
 
 
 def mkdir(path):
@@ -233,7 +248,7 @@ class Castra(object):
             self.extend(buf)
 
     def dirname(self, *args):
-        return os.path.join(self.path, *args)
+        return os.path.join(self.path, *list(map(escape, args)))
 
     def load_partition(self, name, columns, categorize=True):
         if isinstance(columns, Iterator):
