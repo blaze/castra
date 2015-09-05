@@ -478,3 +478,9 @@ def test_column_with_period():
 
     with Castra(template=df) as c:
         c.extend(df)
+
+
+def test_empty():
+    with Castra(template=A) as c:
+        c.extend(pd.DataFrame(columns=A.columns))
+        assert len(c[:]) == 0

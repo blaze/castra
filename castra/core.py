@@ -181,6 +181,8 @@ class Castra(object):
     def extend(self, df):
         if self._readonly:
             raise IOError('File not open for writing')
+        if len(df) == 0:
+            return
         # TODO: Ensure that df is consistent with existing data
         if not df.index.is_monotonic_increasing:
             df = df.sort_index(inplace=False)
