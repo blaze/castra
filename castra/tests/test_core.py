@@ -484,3 +484,11 @@ def test_empty():
     with Castra(template=A) as c:
         c.extend(pd.DataFrame(columns=A.columns))
         assert len(c[:]) == 0
+
+
+def test_index_with_single_value():
+    df = pd.DataFrame({'x': [1, 2, 3]}, index=[1, 1, 2])
+    with Castra(template=df) as c:
+        c.extend(df)
+
+        tm.assert_frame_equal(c[1], df.loc[1])

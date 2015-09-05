@@ -280,7 +280,11 @@ class Castra(object):
         if isinstance(columns, slice):
             columns = self.columns[columns]
 
-        start, stop = key.start, key.stop
+        if isinstance(key, slice):
+            start, stop = key.start, key.stop
+        else:
+            start, stop = key, key
+            key = slice(start, stop)
         names = select_partitions(self.partitions, key)
 
         if not names:
