@@ -446,8 +446,10 @@ def _decategorize(categories, df):
     """
     extra = dict()
     new_categories = dict()
-    new_columns = dict((col, df[col]) for col in df.columns)
+    new_columns = dict((col, df[col].values) for col in df.columns)
     for col, cat in categories.items():
+        if col == '.index':
+            continue
         idx = pd.Index(df[col])
         idx = getattr(idx, 'categories', idx)
         ex = idx[~idx.isin(cat)].unique()
@@ -455,19 +457,42 @@ def _decategorize(categories, df):
             ex = ex[~pd.isnull(ex)]
         extra[col] = ex.tolist()
         new_categories[col] = cat + extra[col]
-        new_columns[col] = pd.Categorical(df[col], new_categories[col]).codes
-    new_df = pd.DataFrame(new_columns, columns=df.columns, index=df.index)
+        new_columns[col] = pd.Categorical(df[col].values, new_categories[col]).codes
+
+    if '.index' in categories:
+        idx = df.index
+        idx = getattr(idx, 'categories', idx)
+        ex = idx[~idx.isin(cat)].unique()
+        if any(pd.isnull(c) for c in cat):
+            ex = ex[~pd.isnull(ex)]
+        extra['.index'] = ex.tolist()
+        new_categories['.index'] = cat + extra['.index']
+
+        new_index = pd.Categorical(df.index, new_categories['.index']).codes
+    else:
+        new_index = df.index
+
+    new_df = pd.DataFrame(new_columns, columns=df.columns, index=new_index)
     return extra, new_categories, new_df
 
 
 def make_categorical(s, categories):
-    if s.name in categories:
-        idx = pd.Index(categories[s.name], tupleize_cols=False, dtype='object')
-        idx.is_unique = True
-        cat = pd.Categorical(s.values, categories=idx, fastpath=True,
-                             ordered=False)
-        return pd.Series(cat, index=s.index, name=s.name)
-    else:
+    if isinstance(s, pd.Series):
+        if s.name in categories:
+            idx = pd.Index(categories[s.name], tupleize_cols=False, dtype='object')
+            idx.is_unique = True
+            cat = pd.Categorical(s.values, categories=idx, fastpath=True,
+                                 ordered=False)
+            return cat
+        else:
+            return s.values
+    if isinstance(s, pd.Index):
+        if '.index' in categories:
+            idx = pd.Index(categories['.index'], tupleize_cols=False, dtype='object')
+            idx.is_unique = True
+            cat = pd.Categorical(s.values, categories=idx, fastpath=True,
+                                 ordered=False)
+            return pd.CategoricalIndex(cat, name=s.name, ordered=True)
         return s
 
 
@@ -483,12 +508,14 @@ def _categorize(categories, df):
     2  3  A
     """
     if isinstance(df, pd.Series):
-        return make_categorical(df, categories)
+        return pd.Series(make_categorical(df, categories),
+                         index=make_categorical(df.index, categories),
+                         name=df.name)
     else:
         return pd.DataFrame(dict((col, make_categorical(df[col], categories))
                                  for col in df.columns),
                             columns=df.columns,
-                            index=df.index)
+                            index=make_categorical(df.index, categories))
 
 
 def partitionby_none(buf, new):

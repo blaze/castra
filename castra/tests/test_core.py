@@ -11,7 +11,7 @@ import pytest
 import numpy as np
 
 from castra import Castra
-from castra.core import mkdir, select_partitions
+from castra.core import mkdir, select_partitions, _decategorize, _categorize
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -492,3 +492,16 @@ def test_index_with_single_value():
         c.extend(df)
 
         tm.assert_frame_equal(c[1], df.loc[1])
+
+
+def test__decategorize():
+    df = pd.DataFrame({'x': [1, 2, 3]}, index=pd.Categorical(['a', 'a', 'b'],
+        ordered=True))
+
+    extra, categories, df2 = _decategorize({'.index': []}, df)
+
+    assert (df2.index == [0, 0, 1]).all()
+
+    df3 = _categorize(categories, df2)
+
+    tm.assert_frame_equal(df, df3)
