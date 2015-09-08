@@ -94,30 +94,35 @@ class Castra(object):
         elif template is not None:
             if self._readonly:
                 ValueError("Can't create new castra in readonly mode")
-            self.columns, self.dtypes, self.index_dtype = \
-                list(template.columns), template.dtypes, template.index.dtype
-            self.axis_names = [template.index.name, template.columns.name]
-            self.partitions = pd.Series([], dtype='O',
-                                        index=template.index.__class__([]))
-            self.minimum = None
+
             if isinstance(categories, (list, tuple)):
                 self.categories = dict((col, []) for col in categories)
             elif categories is True:
                 self.categories = dict((col, [])
                                        for col in template.columns
                                        if template.dtypes[col] == 'object')
+                if isinstance(template.index, pd.CategoricalIndex):
+                    self.categories['.index'] = []
             else:
                 self.categories = dict()
 
             if self.categories:
                 categories = set(self.categories)
                 template_categories = set(template.dtypes.index.values)
-                if categories.difference(template_categories):
+                if categories.difference(template_categories) - set(['.index']):
                     raise ValueError('passed in categories %s are not all '
                                      'contained in template dataframe columns '
                                      '%s' % (categories, template_categories))
-                for c in self.categories:
-                    self.dtypes[c] = pd.core.categorical.CategoricalDtype()
+
+            template2 = _decategorize(self.categories, template)[2]
+
+            self.columns, self.dtypes, self.index_dtype = \
+                list(template2.columns), template2.dtypes, template2.index.dtype
+            self.axis_names = [template2.index.name, template2.columns.name]
+
+            self.partitions = pd.Series([], dtype='O',
+                                        index=template2.index.__class__([]))
+            self.minimum = None
 
             mkdir(self.dirname('meta', 'categories'))
             self.flush_meta()
@@ -195,14 +200,15 @@ class Castra(object):
                 df.index = new_index
             else:
                 raise ValueError("Index of new dataframe less than known data")
-        index = df.index.values
-        partition_name = '--'.join([escape(index.min()), escape(index.max())])
-
-        mkdir(self.dirname(partition_name))
 
         new_categories, self.categories, df = _decategorize(self.categories,
                                                             df)
         self.append_categories(new_categories)
+
+        index = df.index.values
+        partition_name = '--'.join([escape(index.min()), escape(index.max())])
+
+        mkdir(self.dirname(partition_name))
 
         # Store columns
         for col in df.columns:
@@ -215,7 +221,7 @@ class Castra(object):
 
         if not len(self.partitions):
             self.minimum = coerce_index(index.dtype, index.min())
-        self.partitions[index.max()] = partition_name
+        self.partitions.loc[index.max()] = partition_name
         self.flush()
 
     def extend_sequence(self, seq, freq=None):
@@ -448,7 +454,7 @@ def _decategorize(categories, df):
     new_categories = dict()
     new_columns = dict((col, df[col].values) for col in df.columns)
     for col, cat in categories.items():
-        if col == '.index':
+        if col == '.index' or col not in df.columns:
             continue
         idx = pd.Index(df[col])
         idx = getattr(idx, 'categories', idx)

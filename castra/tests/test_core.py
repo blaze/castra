@@ -315,7 +315,6 @@ def test_category_dtype():
     with Castra(template=A, categories=['z']) as c:
         c.extend(A)
         assert A.dtypes['z'] == 'object'
-        assert c.dtypes['z'] == pd.core.categorical.CategoricalDtype()
 
 
 def test_do_not_create_dirs_if_template_fails():
@@ -492,6 +491,16 @@ def test_index_with_single_value():
         c.extend(df)
 
         tm.assert_frame_equal(c[1], df.loc[1])
+
+
+def test_categorical_index():
+    df = pd.DataFrame({'x': [1, 2, 3]}, index=pd.Categorical(['a', 'a', 'b'],
+        ordered=True))
+
+    with Castra(template=df, categories=True) as c:
+        c.extend(df)
+        result = c[:]
+        tm.assert_frame_equal(c[:], df)
 
 
 def test__decategorize():
