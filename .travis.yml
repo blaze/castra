@@ -22,6 +22,7 @@ install:
   - source activate castra
   - pip install blosc
   - pip install bloscpack
+  - pip install dask --upgrade
 
 script:
   - py.test -x --doctest-modules --pyargs castra
