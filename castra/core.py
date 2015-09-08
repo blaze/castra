@@ -96,6 +96,9 @@ class Castra(object):
                 ValueError("Can't create new castra in readonly mode")
 
             if isinstance(categories, (list, tuple)):
+                if template.index.name in categories:
+                    categories.remove(template.index.name)
+                    categories.append('.index')
                 self.categories = dict((col, []) for col in categories)
             elif categories is True:
                 self.categories = dict((col, [])
@@ -475,6 +478,7 @@ def _decategorize(categories, df):
         new_categories['.index'] = cat + extra['.index']
 
         new_index = pd.Categorical(df.index, new_categories['.index']).codes
+        new_index = pd.Index(new_index, name=df.index.name)
     else:
         new_index = df.index
 

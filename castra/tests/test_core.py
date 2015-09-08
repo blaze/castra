@@ -494,18 +494,24 @@ def test_index_with_single_value():
 
 
 def test_categorical_index():
-    df = pd.DataFrame({'x': [1, 2, 3]}, index=pd.Categorical(['a', 'a', 'b'],
-        ordered=True))
+    df = pd.DataFrame({'x': [1, 2, 3]},
+            index=pd.CategoricalIndex(['a', 'a', 'b'], ordered=True, name='foo'))
 
     with Castra(template=df, categories=True) as c:
         c.extend(df)
         result = c[:]
         tm.assert_frame_equal(c[:], df)
 
+    with Castra(template=df, categories=['foo']) as c:
+        c.extend(df)
+        result = c[:]
+        tm.assert_frame_equal(c[:], df)
+
 
 def test__decategorize():
-    df = pd.DataFrame({'x': [1, 2, 3]}, index=pd.Categorical(['a', 'a', 'b'],
-        ordered=True))
+    df = pd.DataFrame({'x': [1, 2, 3]},
+                      index=pd.CategoricalIndex(['a', 'a', 'b'], ordered=True,
+                          name='foo'))
 
     extra, categories, df2 = _decategorize({'.index': []}, df)
 
