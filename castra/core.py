@@ -265,6 +265,8 @@ class Castra(object):
     def load_partition(self, name, columns, categorize=True):
         if isinstance(columns, Iterator):
             columns = list(columns)
+        if '.index' in self.categories and name in self.partitions.index:
+            name = self.categories['.index'].index(name) - 1
         if not isinstance(columns, list):
             df = self.load_partition(name, [columns], categorize=categorize)
             return df.iloc[:, 0]
@@ -294,7 +296,14 @@ class Castra(object):
             start, stop = key.start, key.stop
         else:
             start, stop = key, key
-            key = slice(start, stop)
+
+        if '.index' in self.categories:
+            if start is not None:
+                start = self.categories['.index'].index(start)
+            if stop is not None:
+                stop = self.categories['.index'].index(stop)
+        key = slice(start, stop)
+
         names = select_partitions(self.partitions, key)
 
         if not names:
@@ -355,10 +364,14 @@ class Castra(object):
 
         divisions = [self.minimum] + self.partitions.index.tolist()
         if '.index' in self.categories:
-            divisions = [self.categories['.index'][d] for d in divisions]
+            divisions = ([self.categories['.index'][0]]
+                       + [self.categories['.index'][d + 1] for d in divisions[1:-1]]
+                       + [self.categories['.index'][-1]])
+
+        key_parts = list(enumerate(self.partitions.values))
 
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
-                   for i, part in enumerate(self.partitions.values))
+                   for i, part in key_parts)
         if isinstance(columns, list):
             return dd.DataFrame(dsk, name, columns, divisions)
         else:

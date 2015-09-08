@@ -520,6 +520,8 @@ def test_categorical_index():
             expected.index = pd.CategoricalIndex(expected.index,
                     name=expected.index.name, ordered=True)
             tm.assert_frame_equal(result, expected)
+
+            tm.assert_frame_equal(c['a'], expected.loc['a'])
     finally:
         shutil.rmtree(path)
 
@@ -529,8 +531,8 @@ def test_categorical_index_with_dask_dataframe():
     import dask.dataframe as dd
     import dask
 
-    A = pd.DataFrame({'x': [1, 2, 3]},
-                    index=pd.Index(['a', 'a', 'b'], name='foo'))
+    A = pd.DataFrame({'x': [1, 2, 3, 4]},
+                    index=pd.Index(['a', 'a', 'b', 'b'], name='foo'))
     B = pd.DataFrame({'x': [4, 5, 6]},
                     index=pd.Index(['c', 'd', 'd'], name='foo'))
 
@@ -542,7 +544,7 @@ def test_categorical_index_with_dask_dataframe():
             c.extend(B)
 
             df = dd.from_castra(path)
-            assert df.divisions == ('a', 'b', 'd')
+            assert df.divisions == ('a', 'c', 'd')
 
             result = df.compute(get=dask.async.get_sync)
 
@@ -551,6 +553,10 @@ def test_categorical_index_with_dask_dataframe():
                     name=expected.index.name, ordered=True)
 
             tm.assert_frame_equal(result, expected)
+
+            tm.assert_frame_equal(df.loc['a'].compute(), expected.loc['a'])
+            tm.assert_frame_equal(df.loc['b'].compute(get=dask.async.get_sync),
+                                  expected.loc['b'])
     finally:
         shutil.rmtree(path)
 
