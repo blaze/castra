@@ -178,7 +178,7 @@ class Castra(object):
     def load_categories(self, loads=pickle.loads):
         separator = b'-sep-'
         self.categories = dict()
-        for col in self.columns:
+        for col in list(self.columns) + ['.index']:
             fn = self.dirname('meta', 'categories', col)
             if os.path.exists(fn):
                 with open(fn, 'rb') as f:
@@ -194,6 +194,11 @@ class Castra(object):
         # TODO: Ensure that df is consistent with existing data
         if not df.index.is_monotonic_increasing:
             df = df.sort_index(inplace=False)
+
+        new_categories, self.categories, df = _decategorize(self.categories,
+                                                            df)
+        self.append_categories(new_categories)
+
         if len(self.partitions) and df.index[0] <= self.partitions.index[-1]:
             if is_trivial_index(df.index):
                 df = df.copy()
@@ -203,10 +208,6 @@ class Castra(object):
                 df.index = new_index
             else:
                 raise ValueError("Index of new dataframe less than known data")
-
-        new_categories, self.categories, df = _decategorize(self.categories,
-                                                            df)
-        self.append_categories(new_categories)
 
         index = df.index.values
         partition_name = '--'.join([escape(index.min()), escape(index.max())])
@@ -351,9 +352,13 @@ class Castra(object):
 
         token = md5(str((self.path, os.path.getmtime(self.path))).encode()).hexdigest()
         name = 'from-castra-' + token
+
+        divisions = [self.minimum] + self.partitions.index.tolist()
+        if '.index' in self.categories:
+            divisions = [self.categories['.index'][d] for d in divisions]
+
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
                    for i, part in enumerate(self.partitions.values))
-        divisions = [self.minimum] + list(self.partitions.index)
         if isinstance(columns, list):
             return dd.DataFrame(dsk, name, columns, divisions)
         else:
