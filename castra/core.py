@@ -505,23 +505,14 @@ def _decategorize(categories, df):
 
 
 def make_categorical(s, categories):
-    if isinstance(s, pd.Series):
-        if s.name in categories:
-            idx = pd.Index(categories[s.name], tupleize_cols=False, dtype='object')
-            idx.is_unique = True
-            cat = pd.Categorical(s.values, categories=idx, fastpath=True,
-                                 ordered=False)
-            return cat
-        else:
-            return s.values
-    if isinstance(s, pd.Index):
-        if '.index' in categories:
-            idx = pd.Index(categories['.index'], tupleize_cols=False, dtype='object')
-            idx.is_unique = True
-            cat = pd.Categorical(s.values, categories=idx, fastpath=True,
-                                 ordered=False)
-            return pd.CategoricalIndex(cat, name=s.name, ordered=True)
-        return s
+    name = '.index' if isinstance(s, pd.Index) else s.name
+    if name in categories:
+        idx = pd.Index(categories[name], tupleize_cols=False, dtype='object')
+        idx.is_unique = True
+        cat = pd.Categorical(s.values, categories=idx, fastpath=True, ordered=False)
+        return pd.CategoricalIndex(cat, name=s.name, ordered=True) if name == '.index' else cat
+    return s if name == '.index' else s.values
+
 
 
 def _categorize(categories, df):
