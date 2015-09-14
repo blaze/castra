@@ -325,8 +325,7 @@ def test_do_not_create_dirs_if_template_fails():
                      columns=list('xyz'))
     with pytest.raises(ValueError):
         Castra(template=A, path='foo', categories=['w'])
-    assert not os.path.exists(os.path.join('foo', 'meta'))
-    assert not os.path.exists(os.path.join('foo', 'meta', 'categories'))
+    assert not os.path.exists('foo')
 
 
 def test_sort_on_extend():
@@ -469,6 +468,21 @@ def test_extend_sequence_overlap():
         c.extend_sequence(seq)
         tm.assert_frame_equal(c[:], df)
         assert (c.partitions.index == [9, 16]).all()
+
+
+def test_extend_sequence_single_frame():
+    df = pd.util.testing.makeTimeDataFrame(100, 'h')
+    seq = [df]
+    with Castra(template=df) as c:
+        c.extend_sequence(seq, freq='d')
+        assert (c.partitions.index == ['2000-01-01 23:00:00', '2000-01-02 23:00:00',
+                 '2000-01-03 23:00:00', '2000-01-04 23:00:00', '2000-01-05 03:00:00']).all()
+    df = pd.DataFrame({'a': range(10), 'b': range(10)})
+    seq = [df]
+    with Castra(template=df) as c:
+        c.extend_sequence(seq)
+        tm.assert_frame_equal(c[:], df)
+
 
 def test_column_with_period():
     df = pd.DataFrame({'x': [10, 20],

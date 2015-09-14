@@ -73,13 +73,6 @@ class Castra(object):
         else:
             self.path = path
 
-        # check if the given path exists already and create it if it doesn't
-        mkdir(self.path)
-
-        # raise an Exception if it isn't a directory
-        if not isdir(self.path):
-            raise ValueError("'path': %s must be a directory")
-
         # either we have a meta directory
         if isdir(self.dirname('meta')):
             if template is not None:
@@ -118,6 +111,13 @@ class Castra(object):
                                      '%s' % (categories, template_categories))
                 for c in self.categories:
                     self.dtypes[c] = pd.core.categorical.CategoricalDtype()
+
+            # check if the given path exists already and create it if it doesn't
+            mkdir(self.path)
+
+            # raise an Exception if it isn't a directory
+            if not isdir(self.path):
+                raise ValueError("'path': %s must be a directory")
 
             mkdir(self.dirname('meta', 'categories'))
             self.flush_meta()
@@ -238,10 +238,7 @@ class Castra(object):
             partitioner = partitionby_none
         else:
             raise ValueError("Invalid 'freq': {0}".format(repr(freq)))
-        seq = iter(seq)
-        buf = next(seq, None)
-        if not buf.index.is_monotonic_increasing:
-            buf = buf.sort_index(inplace=False)
+        buf = self._empty_dataframe()
         for df in seq:
             write, buf = partitioner(buf, df)
             for frame in write:
@@ -495,6 +492,8 @@ def partitionby_none(buf, new):
     """Repartition to ensure partitions don't split duplicate indices"""
     if new.empty:
         return [], buf
+    elif buf.empty:
+        return [], new
     if not new.index.is_monotonic_increasing:
         new = new.sort_index(inplace=False)
     end = buf.index[-1]
