@@ -87,30 +87,38 @@ class Castra(object):
         elif template is not None:
             if self._readonly:
                 ValueError("Can't create new castra in readonly mode")
-            self.columns, self.dtypes, self.index_dtype = \
-                list(template.columns), template.dtypes, template.index.dtype
-            self.axis_names = [template.index.name, template.columns.name]
-            self.partitions = pd.Series([], dtype='O',
-                                        index=template.index.__class__([]))
-            self.minimum = None
+
             if isinstance(categories, (list, tuple)):
+                if template.index.name in categories:
+                    categories.remove(template.index.name)
+                    categories.append('.index')
                 self.categories = dict((col, []) for col in categories)
             elif categories is True:
                 self.categories = dict((col, [])
                                        for col in template.columns
                                        if template.dtypes[col] == 'object')
+                if isinstance(template.index, pd.CategoricalIndex):
+                    self.categories['.index'] = []
             else:
                 self.categories = dict()
 
             if self.categories:
                 categories = set(self.categories)
                 template_categories = set(template.dtypes.index.values)
-                if categories.difference(template_categories):
+                if categories.difference(template_categories) - set(['.index']):
                     raise ValueError('passed in categories %s are not all '
                                      'contained in template dataframe columns '
                                      '%s' % (categories, template_categories))
-                for c in self.categories:
-                    self.dtypes[c] = pd.core.categorical.CategoricalDtype()
+
+            template2 = _decategorize(self.categories, template)[2]
+
+            self.columns, self.dtypes, self.index_dtype = \
+                list(template2.columns), template2.dtypes, template2.index.dtype
+            self.axis_names = [template2.index.name, template2.columns.name]
+
+            self.partitions = pd.Series([], dtype='O',
+                                        index=template2.index.__class__([]))
+            self.minimum = None
 
             # check if the given path exists already and create it if it doesn't
             mkdir(self.path)
@@ -170,7 +178,7 @@ class Castra(object):
     def load_categories(self, loads=pickle.loads):
         separator = b'-sep-'
         self.categories = dict()
-        for col in self.columns:
+        for col in list(self.columns) + ['.index']:
             fn = self.dirname('meta', 'categories', col)
             if os.path.exists(fn):
                 with open(fn, 'rb') as f:
@@ -186,6 +194,11 @@ class Castra(object):
         # TODO: Ensure that df is consistent with existing data
         if not df.index.is_monotonic_increasing:
             df = df.sort_index(inplace=False)
+
+        new_categories, self.categories, df = _decategorize(self.categories,
+                                                            df)
+        self.append_categories(new_categories)
+
         if len(self.partitions) and df.index[0] <= self.partitions.index[-1]:
             if is_trivial_index(df.index):
                 df = df.copy()
@@ -195,14 +208,11 @@ class Castra(object):
                 df.index = new_index
             else:
                 raise ValueError("Index of new dataframe less than known data")
+
         index = df.index.values
         partition_name = '--'.join([escape(index.min()), escape(index.max())])
 
         mkdir(self.dirname(partition_name))
-
-        new_categories, self.categories, df = _decategorize(self.categories,
-                                                            df)
-        self.append_categories(new_categories)
 
         # Store columns
         for col in df.columns:
@@ -215,7 +225,7 @@ class Castra(object):
 
         if not len(self.partitions):
             self.minimum = coerce_index(index.dtype, index.min())
-        self.partitions[index.max()] = partition_name
+        self.partitions.loc[index.max()] = partition_name
         self.flush()
 
     def extend_sequence(self, seq, freq=None):
@@ -252,6 +262,8 @@ class Castra(object):
     def load_partition(self, name, columns, categorize=True):
         if isinstance(columns, Iterator):
             columns = list(columns)
+        if '.index' in self.categories and name in self.partitions.index:
+            name = self.categories['.index'].index(name) - 1
         if not isinstance(columns, list):
             df = self.load_partition(name, [columns], categorize=categorize)
             return df.iloc[:, 0]
@@ -281,7 +293,14 @@ class Castra(object):
             start, stop = key.start, key.stop
         else:
             start, stop = key, key
-            key = slice(start, stop)
+
+        if '.index' in self.categories:
+            if start is not None:
+                start = self.categories['.index'].index(start)
+            if stop is not None:
+                stop = self.categories['.index'].index(stop)
+        key = slice(start, stop)
+
         names = select_partitions(self.partitions, key)
 
         if not names:
@@ -339,9 +358,17 @@ class Castra(object):
 
         token = md5(str((self.path, os.path.getmtime(self.path))).encode()).hexdigest()
         name = 'from-castra-' + token
+
+        divisions = [self.minimum] + self.partitions.index.tolist()
+        if '.index' in self.categories:
+            divisions = ([self.categories['.index'][0]]
+                       + [self.categories['.index'][d + 1] for d in divisions[1:-1]]
+                       + [self.categories['.index'][-1]])
+
+        key_parts = list(enumerate(self.partitions.values))
+
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
-                   for i, part in enumerate(self.partitions.values))
-        divisions = [self.minimum] + list(self.partitions.index)
+                   for i, part in key_parts)
         if isinstance(columns, list):
             return dd.DataFrame(dsk, name, columns, divisions)
         else:
@@ -443,8 +470,10 @@ def _decategorize(categories, df):
     """
     extra = dict()
     new_categories = dict()
-    new_columns = dict((col, df[col]) for col in df.columns)
+    new_columns = dict((col, df[col].values) for col in df.columns)
     for col, cat in categories.items():
+        if col == '.index' or col not in df.columns:
+            continue
         idx = pd.Index(df[col])
         idx = getattr(idx, 'categories', idx)
         ex = idx[~idx.isin(cat)].unique()
@@ -452,20 +481,35 @@ def _decategorize(categories, df):
             ex = ex[~pd.isnull(ex)]
         extra[col] = ex.tolist()
         new_categories[col] = cat + extra[col]
-        new_columns[col] = pd.Categorical(df[col], new_categories[col]).codes
-    new_df = pd.DataFrame(new_columns, columns=df.columns, index=df.index)
+        new_columns[col] = pd.Categorical(df[col].values, new_categories[col]).codes
+
+    if '.index' in categories:
+        idx = df.index
+        idx = getattr(idx, 'categories', idx)
+        ex = idx[~idx.isin(cat)].unique()
+        if any(pd.isnull(c) for c in cat):
+            ex = ex[~pd.isnull(ex)]
+        extra['.index'] = ex.tolist()
+        new_categories['.index'] = cat + extra['.index']
+
+        new_index = pd.Categorical(df.index, new_categories['.index']).codes
+        new_index = pd.Index(new_index, name=df.index.name)
+    else:
+        new_index = df.index
+
+    new_df = pd.DataFrame(new_columns, columns=df.columns, index=new_index)
     return extra, new_categories, new_df
 
 
 def make_categorical(s, categories):
-    if s.name in categories:
-        idx = pd.Index(categories[s.name], tupleize_cols=False, dtype='object')
+    name = '.index' if isinstance(s, pd.Index) else s.name
+    if name in categories:
+        idx = pd.Index(categories[name], tupleize_cols=False, dtype='object')
         idx.is_unique = True
-        cat = pd.Categorical(s.values, categories=idx, fastpath=True,
-                             ordered=False)
-        return pd.Series(cat, index=s.index, name=s.name)
-    else:
-        return s
+        cat = pd.Categorical(s.values, categories=idx, fastpath=True, ordered=False)
+        return pd.CategoricalIndex(cat, name=s.name, ordered=True) if name == '.index' else cat
+    return s if name == '.index' else s.values
+
 
 
 def _categorize(categories, df):
@@ -480,12 +524,14 @@ def _categorize(categories, df):
     2  3  A
     """
     if isinstance(df, pd.Series):
-        return make_categorical(df, categories)
+        return pd.Series(make_categorical(df, categories),
+                         index=make_categorical(df.index, categories),
+                         name=df.name)
     else:
         return pd.DataFrame(dict((col, make_categorical(df[col], categories))
                                  for col in df.columns),
                             columns=df.columns,
-                            index=df.index)
+                            index=make_categorical(df.index, categories))
 
 
 def partitionby_none(buf, new):

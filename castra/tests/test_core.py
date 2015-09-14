@@ -11,7 +11,7 @@ import pytest
 import numpy as np
 
 from castra import Castra
-from castra.core import mkdir, select_partitions
+from castra.core import mkdir, select_partitions, _decategorize, _categorize
 
 
 A = pd.DataFrame({'x': [1, 2],
@@ -315,7 +315,6 @@ def test_category_dtype():
     with Castra(template=A, categories=['z']) as c:
         c.extend(A)
         assert A.dtypes['z'] == 'object'
-        assert c.dtypes['z'] == pd.core.categorical.CategoricalDtype()
 
 
 def test_do_not_create_dirs_if_template_fails():
@@ -506,3 +505,85 @@ def test_index_with_single_value():
         c.extend(df)
 
         tm.assert_frame_equal(c[1], df.loc[1])
+
+
+def test_categorical_index():
+    df = pd.DataFrame({'x': [1, 2, 3]},
+            index=pd.CategoricalIndex(['a', 'a', 'b'], ordered=True, name='foo'))
+
+    with Castra(template=df, categories=True) as c:
+        c.extend(df)
+        result = c[:]
+        tm.assert_frame_equal(c[:], df)
+
+    A = pd.DataFrame({'x': [1, 2, 3]},
+                    index=pd.Index(['a', 'a', 'b'], name='foo'))
+    B = pd.DataFrame({'x': [4, 5, 6]},
+                    index=pd.Index(['c', 'd', 'd'], name='foo'))
+
+    path = tempfile.mkdtemp(prefix='castra-')
+    try:
+        with Castra(path=path, template=A, categories=['foo']) as c:
+            c.extend(A)
+            c.extend(B)
+
+            c2 = Castra(path=path)
+            result = c2[:]
+
+            expected = pd.concat([A, B])
+            expected.index = pd.CategoricalIndex(expected.index,
+                    name=expected.index.name, ordered=True)
+            tm.assert_frame_equal(result, expected)
+
+            tm.assert_frame_equal(c['a'], expected.loc['a'])
+    finally:
+        shutil.rmtree(path)
+
+
+def test_categorical_index_with_dask_dataframe():
+    pytest.importorskip('dask.dataframe')
+    import dask.dataframe as dd
+    import dask
+
+    A = pd.DataFrame({'x': [1, 2, 3, 4]},
+                    index=pd.Index(['a', 'a', 'b', 'b'], name='foo'))
+    B = pd.DataFrame({'x': [4, 5, 6]},
+                    index=pd.Index(['c', 'd', 'd'], name='foo'))
+
+
+    path = tempfile.mkdtemp(prefix='castra-')
+    try:
+        with Castra(path=path, template=A, categories=['foo']) as c:
+            c.extend(A)
+            c.extend(B)
+
+            df = dd.from_castra(path)
+            assert df.divisions == ('a', 'c', 'd')
+
+            result = df.compute(get=dask.async.get_sync)
+
+            expected = pd.concat([A, B])
+            expected.index = pd.CategoricalIndex(expected.index,
+                    name=expected.index.name, ordered=True)
+
+            tm.assert_frame_equal(result, expected)
+
+            tm.assert_frame_equal(df.loc['a'].compute(), expected.loc['a'])
+            tm.assert_frame_equal(df.loc['b'].compute(get=dask.async.get_sync),
+                                  expected.loc['b'])
+    finally:
+        shutil.rmtree(path)
+
+
+def test__decategorize():
+    df = pd.DataFrame({'x': [1, 2, 3]},
+                      index=pd.CategoricalIndex(['a', 'a', 'b'], ordered=True,
+                          name='foo'))
+
+    extra, categories, df2 = _decategorize({'.index': []}, df)
+
+    assert (df2.index == [0, 0, 1]).all()
+
+    df3 = _categorize(categories, df2)
+
+    tm.assert_frame_equal(df, df3)
