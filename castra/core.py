@@ -256,18 +256,20 @@ class Castra(object):
             df = self.load_partition(name, [columns], categorize=categorize)
             return df.iloc[:, 0]
         arrays = [unpack_file(self.dirname(name, col)) for col in columns]
-        index = unpack_file(self.dirname(name, '.index'))
 
         df = pd.DataFrame(dict(zip(columns, arrays)),
                           columns=pd.Index(columns, name=self.axis_names[1],
                                            tupleize_cols=False),
-                          index=pd.Index(index,
-                                         dtype=self.index_dtype,
-                                         name=self.axis_names[0],
-                                         tupleize_cols=False))
+                          index=self.load_index(name))
         if categorize:
             df = _categorize(self.categories, df)
         return df
+
+    def load_index(self, name):
+        return pd.Index(unpack_file(self.dirname(name, '.index')),
+                        dtype=self.index_dtype,
+                        name=self.axis_names[0],
+                        tupleize_cols=False)
 
     def __getitem__(self, key):
         if isinstance(key, tuple):
