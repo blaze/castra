@@ -158,8 +158,10 @@ Castra interoperates smoothly with dask.dataframe_
 
    >>> df = dd.from_castra('myfile.castra')
 
-WIP
----
+Work in Progress
+----------------
+
+Castra is immature and largely for experimental use.
 
 The developers do not promise backwards compatibility with future versions.
 You should treat castra as a very efficient temporary format and archive your
