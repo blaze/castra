@@ -116,8 +116,14 @@ class Castra(object):
                 list(template2.columns), template2.dtypes, template2.index.dtype
             self.axis_names = [template2.index.name, template2.columns.name]
 
-            self.partitions = pd.Series([], dtype='O',
-                                        index=template2.index.__class__([]))
+            # If index is a RangeIndex, use Int64Index instead
+            ind_type = type(template2.index)
+            try:
+                if isinstance(template2.index, pd.RangeIndex):
+                    ind_type = pd.Int64Index
+            except AttributeError:
+                pass
+            self.partitions = pd.Series([], dtype='O', index=ind_type([]))
             self.minimum = None
 
             # check if the given path exists already and create it if it doesn't
