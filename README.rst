@@ -173,7 +173,7 @@ data with some other system.
 
 .. _dask.dataframe: https://dask.pydata.org/en/latest/dataframe.html
 
-.. _blogpost: http://matthewrocklin.com/blog/work/2015/06/18/Categoricals/
+.. _blogpost: http://matthewrocklin.com/blog/work/2015/06/18/Categoricals
 
 .. |Build Status| image:: https://travis-ci.org/blaze/castra.svg
    :target: https://travis-ci.org/blaze/castra
