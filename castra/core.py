@@ -141,9 +141,12 @@ class Castra(object):
                 "must specify a 'template' when creating a new Castra")
 
     def _empty_dataframe(self):
-        return pd.DataFrame([],
-                        columns=pd.Index(self.columns, name=self.axis_names[1]),
-                        index=pd.Index([], name=self.axis_names[0]))
+        data = dict((n, pd.Series([], dtype=d, name=n))
+                    for (n, d) in self.dtypes.iteritems())
+        index = pd.Index([], name=self.axis_names[0])
+        columns = pd.Index(self.columns, name=self.axis_names[1])
+        df = pd.DataFrame(data, columns=columns, index=index)
+        return _categorize(self.categories, df)
 
     def load_meta(self, loads=pickle.loads):
         for name in self.meta_fields:
@@ -361,8 +364,11 @@ class Castra(object):
     def to_dask(self, columns=None):
         import dask.dataframe as dd
 
+        meta = self._empty_dataframe()
         if columns is None:
             columns = self.columns
+        else:
+            meta = meta[columns]
 
         token = md5(str((self.path, os.path.getmtime(self.path))).encode()).hexdigest()
         name = 'from-castra-' + token
@@ -378,9 +384,9 @@ class Castra(object):
         dsk = dict(((name, i), (Castra.load_partition, self, part, columns))
                    for i, part in key_parts)
         if isinstance(columns, list):
-            return dd.DataFrame(dsk, name, columns, divisions)
+            return dd.DataFrame(dsk, name, meta, divisions)
         else:
-            return dd.Series(dsk, name, columns, divisions)
+            return dd.Series(dsk, name, meta, divisions)
 
 
 def pack_file(x, fn, encoding='utf8'):
