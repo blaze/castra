@@ -12,7 +12,7 @@ Castra provides efficient columnar range queries.
 *  **Column-store:**  Castra stores columns separately, drastically reducing I/O costs for analytic queries
 *  **Tabular data:**  Castra plays well with Pandas and is an ideal fit for append-only applications like time-series
 
-Maintenacne
+Maintenance
 -----------
 
 This project is no longer actively maintained.  Use at your own risk.
